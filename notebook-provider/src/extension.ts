@@ -45,7 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			for (let i = 0; i < document.cells.length; i++) {
 				let cell = document.cells[i];
-				let language = cell.language ?? '';
+				let language = cell.language || '';
 				if (cell.cell_type === 'markdown') {
 					content += cell.getContent() + '\n';
 				} else {

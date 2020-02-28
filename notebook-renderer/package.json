@@ -40,13 +40,10 @@
     "compile": "tsc -p ./",
     "watch": "npm run build-lib && gulp watch-extension:notebook-renderers",
     "build": "webpack-cli --config extension.webpack.config.js",
-    "build-lib": "webpack --mode production",
-    "download-api": "vscode-dts dev",
-    "postdownload-api": "vscode-dts master",
-    "postinstall": "npm run download-api"
+    "build-lib": "webpack --mode production"
   },
   "dependencies": {
-    "typescript": "^3.6.4",
+    "typescript": "^3.8.2",
     "vscode-extension-telemetry": "0.1.1",
     "vscode-nls": "^4.0.0"
   },
@@ -54,6 +51,6 @@
     "webpack-cli": "^3.3.10",
     "css-loader": "^3.4.1",
     "style-loader": "^1.1.2",
-    "vscode-dts": "^0.3.1"
+    "@types/node": "^6.0.40"
   }
 }

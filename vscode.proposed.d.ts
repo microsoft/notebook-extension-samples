@@ -1412,6 +1412,120 @@ declare module 'vscode' {
 
 	//#endregion
 
+	//#region Peng: Notebook
+
+	export interface CellStreamOutput {
+		output_type: 'stream';
+		text: string;
+	}
+
+	export interface CellErrorOutput {
+		output_type: 'error';
+		/**
+		 * Exception Name
+		 */
+		ename: string;
+		/**
+		 * Exception Value
+		 */
+		evalue: string;
+		/**
+		 * Exception call stack
+		 */
+		traceback: string[];
+	}
+
+	export interface CellDisplayOutput {
+		// todo@peng
+		// eslint-disable-next-line vscode-dts-literal-or-types
+		output_type: 'display_data' | 'execute_result';
+		/**
+		 * { mime_type: value }
+		 *
+		 * Example:
+		 * ```json
+		 * {
+		 *   "output_type": "execute_result",
+		 *   "data": {
+		 *      "text/html": [
+		 *          "<h1>Hello</h1>"
+		 *       ],
+		 *      "text/plain": [
+		 *        "<IPython.lib.display.IFrame at 0x11dee3e80>"
+		 *      ]
+		 *   }
+		 * }
+		 */
+		data: { [key: string]: any };
+	}
+
+	export type CellOutput = CellStreamOutput | CellErrorOutput | CellDisplayOutput;
+
+	export interface NotebookCell {
+		handle: number;
+		language: string;
+		// todo@peng
+		// eslint-disable-next-line vscode-dts-literal-or-types
+		cell_type: 'markdown' | 'code';
+		outputs: CellOutput[];
+		getContent(): string;
+	}
+
+	export interface NotebookDocument {
+		readonly uri: Uri;
+		readonly fileName: string;
+		readonly isDirty: boolean;
+		languages: string[];
+		cells: NotebookCell[];
+		displayOrder?: GlobPattern[];
+	}
+
+	export interface NotebookEditor {
+		readonly document: NotebookDocument;
+		viewColumn?: ViewColumn;
+		/**
+		 * Create a notebook cell. The cell is not inserted into current document when created. Extensions should insert the cell into the document by [TextDocument.cells](#TextDocument.cells)
+		 */
+		// todo@peng
+		// eslint-disable-next-line vscode-dts-literal-or-types
+		createCell(content: string, language: string, type: 'markdown' | 'code', outputs: CellOutput[]): NotebookCell;
+	}
+
+	export interface NotebookProvider {
+		resolveNotebook(editor: NotebookEditor): Promise<void>;
+		executeCell(document: NotebookDocument, cell: NotebookCell | undefined): Promise<void>;
+		save(document: NotebookDocument): Promise<boolean>;
+		latexRenderer?(value: string): Promise<MarkdownString>;
+	}
+
+	export interface NotebookOutputSelector {
+		type: string;
+		subTypes?: string[];
+	}
+
+	export interface NotebookOutputRenderer {
+		/**
+		 *
+		 * @returns HTML fragment. We can probably return `CellOutput` instead of string ?
+		 *
+		 */
+		render(document: NotebookDocument, cell: NotebookCell, output: CellOutput): string;
+		preloads?: Uri[];
+	}
+
+	namespace window {
+		export function registerNotebookProvider(
+			notebookType: string,
+			provider: NotebookProvider
+		): Disposable;
+
+		export function registerNotebookOutputRenderer(type: string, outputSelector: NotebookOutputSelector, renderer: NotebookOutputRenderer): Disposable;
+
+		export let activeNotebookDocument: NotebookDocument | undefined;
+	}
+
+	//#endregion
+
 	//#region color theme access
 
 	/**

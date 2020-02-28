@@ -111,7 +111,7 @@ export class JupyterNotebook {
 
 			let managedCell = editor.createCell(
 				raw_cell.source ? raw_cell.source.join('') : '',
-				notebookJSON?.metadata?.language_info?.name ?? 'python',
+				notebookJSON?.metadata?.language_info?.name || 'python',
 				raw_cell.cell_type,
 				outputs
 			);
@@ -274,7 +274,7 @@ export class NotebookProvider implements vscode.NotebookProvider {
 					source: source,
 					metadata: {
 						language_info: {
-							name: document.cells[i].language ?? 'markdown'
+							name: document.cells[i].language || 'markdown'
 						}
 					},
 					cell_type: document.cells[i].cell_type
@@ -284,7 +284,7 @@ export class NotebookProvider implements vscode.NotebookProvider {
 					source: source,
 					metadata: {
 						language_info: {
-							name: document.cells[i].language ?? 'markdown'
+							name: document.cells[i].language || 'markdown'
 						}
 					},
 					cell_type: document.cells[i].cell_type,

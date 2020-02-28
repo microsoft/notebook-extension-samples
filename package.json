@@ -4,12 +4,18 @@
     "version": "0.0.1",
     "scripts": {
         "build": "node .scripts/run-script.js build",
-        "install": "node .scripts/run-install.js"
+        "install": "node .scripts/run-install.js",
+        "download-api": "vscode-dts dev rebornix/notebook",
+		"postdownload-api": "vscode-dts master",
+		"postinstall": "npm run download-api"
     },
     "devDependencies": {
+        "typescript": "^3.8.2",
         "copy-webpack-plugin": "^4.5.2",
         "merge-options": "^2.0.0",
         "vscode-nls-dev": "^3.3.1",
-        "webpack": "^4.41.6"
+        "webpack": "^4.41.6",
+        "ts-loader": "^4.4.2",
+        "vscode-dts": "^0.3.1"
     }
 }

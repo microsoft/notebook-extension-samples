@@ -122,7 +122,6 @@ function activate(context) {
     // 	}
     // ));
     vscode.commands.registerCommand('notebook.saveToMarkdown', () => {
-        var _a;
         if (vscode.window.activeNotebookDocument) {
             let document = vscode.window.activeNotebookDocument;
             let uri = document.uri;
@@ -132,7 +131,7 @@ function activate(context) {
             let content = '';
             for (let i = 0; i < document.cells.length; i++) {
                 let cell = document.cells[i];
-                let language = (_a = cell.language) !== null && _a !== void 0 ? _a : '';
+                let language = cell.language || '';
                 if (cell.cell_type === 'markdown') {
                     content += cell.getContent() + '\n';
                 }
@@ -236,7 +235,7 @@ class JupyterNotebook {
             'text/plain'
         ];
         let cells = notebookJSON.cells.map(((raw_cell) => {
-            var _a, _b, _c;
+            var _a, _b;
             let outputs = [];
             if (fillOutputs) {
                 outputs = raw_cell.outputs;
@@ -257,7 +256,7 @@ class JupyterNotebook {
                     }
                 }
             }
-            let managedCell = editor.createCell(raw_cell.source ? raw_cell.source.join('') : '', (_c = (_b = (_a = notebookJSON === null || notebookJSON === void 0 ? void 0 : notebookJSON.metadata) === null || _a === void 0 ? void 0 : _a.language_info) === null || _b === void 0 ? void 0 : _b.name) !== null && _c !== void 0 ? _c : 'python', raw_cell.cell_type, outputs);
+            let managedCell = editor.createCell(raw_cell.source ? raw_cell.source.join('') : '', ((_b = (_a = notebookJSON === null || notebookJSON === void 0 ? void 0 : notebookJSON.metadata) === null || _a === void 0 ? void 0 : _a.language_info) === null || _b === void 0 ? void 0 : _b.name) || 'python', raw_cell.cell_type, outputs);
             this.mapping.set(managedCell.handle, raw_cell);
             return managedCell;
         }));
@@ -377,7 +376,6 @@ class NotebookProvider {
         }
     }
     async save(document) {
-        var _a, _b;
         let cells = [];
         for (let i = 0; i < document.cells.length; i++) {
             let lines = document.cells[i].getContent().split(/\r|\n|\r\n/g);
@@ -394,7 +392,7 @@ class NotebookProvider {
                     source: source,
                     metadata: {
                         language_info: {
-                            name: (_a = document.cells[i].language) !== null && _a !== void 0 ? _a : 'markdown'
+                            name: document.cells[i].language || 'markdown'
                         }
                     },
                     cell_type: document.cells[i].cell_type
@@ -405,7 +403,7 @@ class NotebookProvider {
                     source: source,
                     metadata: {
                         language_info: {
-                            name: (_b = document.cells[i].language) !== null && _b !== void 0 ? _b : 'markdown'
+                            name: document.cells[i].language || 'markdown'
                         }
                     },
                     cell_type: document.cells[i].cell_type,
