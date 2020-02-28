@@ -1,0 +1,15 @@
+{
+    "name": "notebook-extension-sample",
+    "publisher": "Microsoft",
+    "version": "0.0.1",
+    "scripts": {
+        "build": "node .scripts/run-script.js build",
+        "install": "node .scripts/run-install.js"
+    },
+    "devDependencies": {
+        "copy-webpack-plugin": "^4.5.2",
+        "merge-options": "^2.0.0",
+        "vscode-nls-dev": "^3.3.1",
+        "webpack": "^4.41.6"
+    }
+}
