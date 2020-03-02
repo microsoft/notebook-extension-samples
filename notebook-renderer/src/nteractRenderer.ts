@@ -20,13 +20,15 @@ export class NteractRenderer implements vscode.NotebookOutputRenderer {
 	}
 
 	// @ts-ignore
-	render(document: vscode.NotebookDocument, cell: vscode.NotebookCell, output: vscode.CellOutput): string {
+	render(document: vscode.NotebookDocument, cell: vscode.NotebookCell, output: vscode.CellOutput, mimeType: string): string {
 		let renderOutputs: string[] = [];
 		let data = (output as vscode.CellDisplayOutput).data;
+		let trimmedData: { [key: string]: any } = {};
+		trimmedData[mimeType] = data[mimeType];
 
 		renderOutputs.push(`
 			<script type="application/vnd.nteract.view+json">
-				${JSON.stringify(data)}
+				${JSON.stringify(trimmedData)}
 			</script>
 			<script> if (window.nteract) { window.nteract.renderTags(); } </script>
 		`);
