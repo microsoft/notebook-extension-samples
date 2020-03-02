@@ -288,7 +288,7 @@ export class NotebookProvider implements vscode.NotebookProvider {
 						}
 					},
 					cell_type: document.cells[i].cell_type,
-					outputs: []
+					outputs: document.cells[i].outputs
 				});
 			}
 		}
