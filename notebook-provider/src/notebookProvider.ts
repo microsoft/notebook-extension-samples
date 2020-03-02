@@ -121,8 +121,8 @@ export class JupyterNotebook {
 		}));
 
 		editor.document.languages = ['python'];
-		editor.document.cells = cells;
 		editor.document.displayOrder = this.displayOrders;
+		editor.document.cells = cells;
 	}
 
 	execute(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined) {
