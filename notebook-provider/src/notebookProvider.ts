@@ -16,6 +16,41 @@ declare var TextEncoder: any;
 // });
 // mjAPI.start();
 
+interface CellStreamOutput {
+	output_type: 'stream';
+	text: string;
+}
+
+interface CellErrorOutput {
+	output_type: 'error';
+	/**
+	 * Exception Name
+	 */
+	ename: string;
+	/**
+	 * Exception Value
+	 */
+	evalue: string;
+	/**
+	 * Exception call stack
+	 */
+	traceback: string[];
+}
+
+interface CellDisplayOutput {
+	output_type: 'display_data' | 'execute_result';
+	data: { [key: string]: any };
+}
+
+export type RawCellOutput = CellStreamOutput | CellErrorOutput | CellDisplayOutput;
+
+export interface RawCell {
+	cell_type: 'markdown' | 'code';
+	outputs?: RawCellOutput[];
+	source: string[];
+	metadata: any;
+}
+
 export class Cell {
 	public outputs: vscode.CellOutput[] = [];
 
@@ -29,7 +64,7 @@ export class Cell {
 
 	containHTML() {
 		return this._outputs && this._outputs.some(output => {
-			if (output.output_type === 'display_data' && output.data['text/html']) {
+			if (output.outputKind === vscode.CellOutputKind.Rich && output.data['text/html']) {
 				return true;
 			}
 
@@ -56,6 +91,48 @@ export class Cell {
 	}
 }
 
+function transformOutputToCore(rawOutput: RawCellOutput): vscode.CellOutput {
+	if (rawOutput.output_type === 'execute_result' || rawOutput.output_type === 'display_data') {
+		return {
+			outputKind: vscode.CellOutputKind.Rich,
+			data: rawOutput.data
+		} as vscode.CellDisplayOutput;
+	} else if (rawOutput.output_type === 'stream') {
+		return {
+			outputKind: vscode.CellOutputKind.Text,
+			text: rawOutput.text
+		} as vscode.CellStreamOutput;
+	} else {
+		return {
+			outputKind: vscode.CellOutputKind.Error,
+			ename: (<CellErrorOutput>rawOutput).ename,
+			evalue: (<CellErrorOutput>rawOutput).evalue,
+			traceback: (<CellErrorOutput>rawOutput).traceback
+		} as vscode.CellErrorOutput;
+	}
+}
+
+function transformOutputFromCore(output: vscode.CellOutput): RawCellOutput {
+	if (output.outputKind === vscode.CellOutputKind.Text) {
+		return {
+			output_type: 'stream',
+			text: output.text
+		};
+	} else if (output.outputKind === vscode.CellOutputKind.Error) {
+		return {
+			output_type: 'error',
+			ename: output.ename,
+			evalue: output.evalue,
+			traceback: output.traceback
+		};
+	} else {
+		return {
+			output_type: 'display_data',
+			data: output.data
+		};
+	}
+}
+
 export class JupyterNotebook {
 	public mapping: Map<number, any> = new Map();
 	private preloadScript = false;
@@ -78,10 +155,10 @@ export class JupyterNotebook {
 		public notebookJSON: any,
 		private fillOutputs: boolean
 	) {
-		let cells = notebookJSON.cells.map(((raw_cell: any) => {
-			let outputs = [];
+		let cells = notebookJSON.cells.map(((raw_cell: RawCell) => {
+			let outputs: vscode.CellOutput[] = [];
 			if (fillOutputs) {
-				outputs = raw_cell.outputs;
+				outputs = raw_cell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
 
 				if (!this.preloadScript) {
 					let containHTML = this.containHTML(raw_cell);
@@ -96,7 +173,7 @@ export class JupyterNotebook {
 
 						outputs.unshift(
 							{
-								'output_type': 'display_data',
+								outputKind: vscode.CellOutputKind.Rich,
 								'data': {
 									'text/html': [
 										`<script src="${scriptUri}"></script>\n`,
@@ -112,7 +189,7 @@ export class JupyterNotebook {
 			let managedCell = editor.createCell(
 				raw_cell.source ? raw_cell.source.join('') : '',
 				notebookJSON?.metadata?.language_info?.name || 'python',
-				raw_cell.cell_type,
+				raw_cell.cell_type === 'code' ? vscode.CellKind.Code :vscode.CellKind.Markdown,
 				outputs
 			);
 
@@ -127,7 +204,7 @@ export class JupyterNotebook {
 
 	execute(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined) {
 		if (cell) {
-			let rawCell = this.mapping.get(cell.handle);
+			let rawCell: RawCell = this.mapping.get(cell.handle);
 
 			if (!this.preloadScript) {
 				let containHTML = this.containHTML(rawCell);
@@ -139,7 +216,7 @@ export class JupyterNotebook {
 
 					let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
 
-					rawCell.outputs.unshift(
+					rawCell.outputs?.unshift(
 						{
 							'output_type': 'display_data',
 							'data': {
@@ -151,13 +228,13 @@ export class JupyterNotebook {
 					);
 				}
 			}
-			cell.outputs = rawCell.outputs;
+			cell.outputs = rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
 		} else {
 			if (!this.fillOutputs) {
 				for (let i = 0; i < document.cells.length; i++) {
 					let cell = document.cells[i];
 
-					let rawCell = this.mapping.get(cell.handle);
+					let rawCell: RawCell = this.mapping.get(cell.handle);
 
 					if (!this.preloadScript) {
 						let containHTML = this.containHTML(rawCell);
@@ -169,7 +246,7 @@ export class JupyterNotebook {
 
 							let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
 
-							rawCell.outputs.unshift(
+							rawCell.outputs?.unshift(
 								{
 									'output_type': 'display_data',
 									'data': {
@@ -181,7 +258,7 @@ export class JupyterNotebook {
 							);
 						}
 					}
-					cell.outputs = rawCell.outputs;
+					cell.outputs = rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
 				}
 
 				this.fillOutputs = true;
@@ -189,7 +266,7 @@ export class JupyterNotebook {
 		}
 	}
 
-	containHTML(rawCell: any) {
+	containHTML(rawCell: RawCell) {
 		return rawCell.outputs && rawCell.outputs.some((output: any) => {
 			if (output.output_type === 'display_data' && output.data['text/html']) {
 				return true;
@@ -257,7 +334,7 @@ export class NotebookProvider implements vscode.NotebookProvider {
 	}
 
 	async save(document: vscode.NotebookDocument): Promise<boolean> {
-		let cells: any[] = [];
+		let cells: RawCell[] = [];
 
 		for (let i = 0; i < document.cells.length; i++) {
 			let lines = document.cells[i].getContent().split(/\r|\n|\r\n/g);
@@ -269,7 +346,7 @@ export class NotebookProvider implements vscode.NotebookProvider {
 				}
 			});
 
-			if (document.cells[i].cell_type === 'markdown') {
+			if (document.cells[i].cellKind === vscode.CellKind.Markdown) {
 				cells.push({
 					source: source,
 					metadata: {
@@ -277,7 +354,7 @@ export class NotebookProvider implements vscode.NotebookProvider {
 							name: document.cells[i].language || 'markdown'
 						}
 					},
-					cell_type: document.cells[i].cell_type
+					cell_type: document.cells[i].cellKind === vscode.CellKind.Markdown ? 'markdown' : 'code'
 				});
 			} else {
 				cells.push({
@@ -287,8 +364,8 @@ export class NotebookProvider implements vscode.NotebookProvider {
 							name: document.cells[i].language || 'markdown'
 						}
 					},
-					cell_type: document.cells[i].cell_type,
-					outputs: document.cells[i].outputs
+					cell_type: document.cells[i].cellKind === vscode.CellKind.Markdown ? 'markdown' : 'code',
+					outputs: document.cells[i].outputs.map(output => transformOutputFromCore(output))
 				});
 			}
 		}
