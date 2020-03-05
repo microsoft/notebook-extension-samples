@@ -9,16 +9,19 @@
 /** @type {Sample[]} */
 const samples = [
     {
-      description: 'Notebook Document Provider',
-      path: 'notebook-provider'
+        description: 'Notebook Document Provider',
+        path: 'notebook-provider'
     },
     {
         description: 'Notebook Renderers',
         path: 'notebook-renderer'
+    },
+    {
+        description: 'Notebook Fake Language',
+        path: 'notebook-lang-brain'
     }
 ]
-  
+
 module.exports = {
     samples
 }
-  
