@@ -7,8 +7,6 @@ import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
 
-	console.log(`${context.asAbsolutePath} IS NOW ACTIVE`);
-
 	// fake definitions
 	context.subscriptions.push(vscode.languages.registerDefinitionProvider({ scheme: 'vscode-notebook' }, new class implements vscode.DefinitionProvider {
 
