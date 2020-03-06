@@ -18,7 +18,9 @@
     <script>
         console.log(Boolean(window.renderRegexp));
         if (window.renderRegexp) {
-            window.renderRegexp(document.getElementById("regexp-render"), "A");
+            window.renderRegexp(document.getElementById("regexp-render"), "dd\/A").catch(err => {
+                console.log(err);
+            });
         }
     </script>
     <style>

@@ -145,7 +145,7 @@ class RegexpProvider implements vscode.NotebookProvider {
 		let cells: vscode.NotebookCell[] = [];
 		try {
 			const cellData = <string[]>JSON.parse(contents);
-			cells = cellData.map(value => editor.createCell(value, 'javascript', vscode.CellKind.Code, [{
+			cells = cellData.map(value => editor.createCell(value, 'regexp', vscode.CellKind.Code, [{
 				outputKind: vscode.CellOutputKind.Rich,
 				data: {
 					'x-application/regexp': value,
@@ -158,7 +158,7 @@ class RegexpProvider implements vscode.NotebookProvider {
 
 		if (cells.length === 0) {
 			const sample = '/Hello (World|Welt)!/';
-			cells.push(editor.createCell(sample, 'javascript', vscode.CellKind.Code, [{
+			cells.push(editor.createCell(sample, 'regexp', vscode.CellKind.Code, [{
 				outputKind: vscode.CellOutputKind.Rich,
 				data: {
 					'x-application/regexp': sample,
@@ -167,7 +167,6 @@ class RegexpProvider implements vscode.NotebookProvider {
 		}
 
 		editor.document.cells = cells;
-
 	}
 
 	async executeCell(_document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined): Promise<void> {

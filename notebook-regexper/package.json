@@ -20,6 +20,15 @@
     "*"
   ],
   "contributes": {
+    "languages": [
+      {
+        "id": "regexp",
+        "aliases": [
+          "Regexp"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
     "notebookProvider": [
       {
         "viewType": "regexp",

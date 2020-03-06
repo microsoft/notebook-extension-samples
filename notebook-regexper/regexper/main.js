@@ -8,10 +8,10 @@
 import Parser from './parser/javascript.js';
 
 (function () {
-  window.renderRegexp = function renderExpression(element, value) {
-    return new Parser(element, { keepContent: true }).parse(value).then(parser => {
-      parser.render();
-    });
+  window.renderRegexp = async function renderExpression(element, value) {
+    const parser = new Parser(element, { keepContent: true });
+    await parser.parse(value);
+    await parser.render();
   }
   window.dispatchEvent(new Event('regexpReady'));
 })()
