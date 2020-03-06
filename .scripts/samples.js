@@ -19,6 +19,10 @@ const samples = [
     {
         description: 'Notebook Fake Language',
         path: 'notebook-lang-brain'
+    },
+    {
+        description: 'Notebook Regexper',
+        path: 'notebook-regexper'
     }
 ]
 

@@ -1,0 +1,51 @@
+{
+  "name": "notebook-regexper",
+  "displayName": "Render Regexper.com inside notebook",
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
+  "version": "1.0.0",
+  "publisher": "vscode",
+  "enableProposedApi": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.40.0"
+  },
+  "main": "./dist/extension",
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "*"
+  ],
+  "contributes": {
+    "notebookProvider": [
+      {
+        "viewType": "regexp",
+        "displayName": "RegExp",
+        "selector": [
+          {
+            "filenamePattern": "*.regexp"
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "build": "webpack-cli --config extension.webpack.config.js && webpack-cli --config regexper/webpack.config.js",
+    "build-lib": "webpack --mode production"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "snapsvg-cjs": "0.0.6",
+    "lodash": "~4.17.15",
+    "canopy": "^0.2.0",
+    "typescript": "3.8.3",
+    "webpack-cli": "^3.3.10",
+    "css-loader": "^3.4.1",
+    "style-loader": "^1.1.2",
+    "@types/node": "^6.0.40"
+  }
+}
