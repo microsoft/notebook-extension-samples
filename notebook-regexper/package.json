@@ -34,6 +34,7 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
+    "watch": "webpack-cli --watch --config extension.webpack.config.js & webpack-cli --watch --config regexper/webpack.config.js",
     "build": "webpack-cli --config extension.webpack.config.js && webpack-cli --config regexper/webpack.config.js",
     "build-lib": "webpack --mode production"
   },

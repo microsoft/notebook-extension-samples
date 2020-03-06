@@ -43,13 +43,13 @@ class RegexpRenderer implements vscode.NotebookOutputRenderer {
 		const value = output.data['x-application/regexp'];
 
 		return `
-	<div id="${container}">
+	<div id="${container}" data-value="${encodeURIComponent(value)}">
 		<div class="messages"></div>
 		<div class="progress">
 			<div>
 			</div>
 		</div>
-		<div class="svg">
+		<div class="svg" style="overflow-x: scroll;">
 			<svg>
 			</svg>
 		</div>
@@ -65,7 +65,8 @@ class RegexpRenderer implements vscode.NotebookOutputRenderer {
 		}).then(() => {
 			console.log('READY');
 			const container = document.getElementById("${container}");
-			window.renderRegexp(container, "${value}").catch(err => {
+			const value = decodeURIComponent(container.dataset.value);
+			window.renderRegexp(container, value).catch(err => {
 				container.querySelector('.messages').innerText = err;
 			});
 		});
