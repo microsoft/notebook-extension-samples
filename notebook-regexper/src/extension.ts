@@ -6,8 +6,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 
+//@ts-ignore
+import * as parser from '../regexper/parser/javascript/parser';
+
 export function activate(context: vscode.ExtensionContext) {
 
+	// notebook stuff
 	context.subscriptions.push(vscode.window.registerNotebookProvider('regexp', new RegexpProvider()));
 	context.subscriptions.push(vscode.window.registerNotebookOutputRenderer(
 		'regexp',
@@ -19,6 +23,37 @@ export function activate(context: vscode.ExtensionContext) {
 		},
 		new RegexpRenderer(context.extensionPath)
 	));
+
+	// regexp validation
+	const diag = vscode.languages.createDiagnosticCollection();
+	const validate = (doc: vscode.TextDocument): void => {
+		if (doc.languageId !== 'regexp') {
+			return;
+		}
+		let d: vscode.Diagnostic[] = [];
+		try {
+			parser.default.parse(doc.getText());
+		} catch (err) {
+			if (err instanceof Error && err.message) {
+				//parse error
+				const lines = err.message.split('\n');
+				const m1 = /Line (\d+): (.*)/.exec(lines[0]);
+				if (m1) {
+					const column = lines[lines.length - 1].indexOf('^') - 1;
+					d.push(new vscode.Diagnostic(
+						new vscode.Range(Number(m1[1]) - 1, column - 1, Number(m1[1]) - 1, column),
+						m1[2]
+					));
+				}
+			}
+
+		}
+		diag.set(doc.uri, d)
+	};
+	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => validate(e.document)));
+	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(e => validate(e)));
+	context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(e => diag.set(e.uri, undefined)));
+
 }
 
 class RegexpRenderer implements vscode.NotebookOutputRenderer {
@@ -44,7 +79,7 @@ class RegexpRenderer implements vscode.NotebookOutputRenderer {
 
 		return `
 	<div id="${container}" data-value="${encodeURIComponent(value)}">
-		<div class="messages"></div>
+		<div class="messages" style="visibility: hidden;"></div>
 		<div class="progress">
 			<div>
 			</div>
