@@ -19,28 +19,25 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const word = document.getText(range);
 			const locs: vscode.Location[] = [];
-			let thisIdx: number = -1;
 
-			for (let doc of vscode.workspace.textDocuments.filter(doc => doc.uri.scheme === 'vscode-notebook')) {
+			for (let doc of vscode.workspace.textDocuments) {
+
+				if (doc.uri.scheme !== 'vscode-notebook' || doc.uri.query !== document.uri.query) {
+					// must be a cell from this notebook
+					continue;
+				}
 
 				const text = doc.getText();
 				const pattern = new RegExp(`\\b${word}\\b`, 'g');
 
 				while (pattern.exec(text)) {
 					const loc = new vscode.Location(doc.uri, doc.getWordRangeAtPosition(doc.positionAt(pattern.lastIndex))!);
-					if (doc === document && loc.range.contains(position)) {
-						thisIdx = locs.length;
-					}
 					locs.push(loc);
 				}
 			}
 
 			// return all?
-			if (thisIdx !== 0) {
-				return locs[0];
-			} else {
-				return locs[thisIdx + 1 % locs.length];
-			}
+			return locs[0];
 		}
 	}));
 
