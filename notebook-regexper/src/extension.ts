@@ -32,6 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 		let d: vscode.Diagnostic[] = [];
 		try {
+			//@ts-ignore
 			parser.default.parse(doc.getText());
 		} catch (err) {
 			if (err instanceof Error && err.message) {
