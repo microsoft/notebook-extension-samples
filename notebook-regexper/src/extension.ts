@@ -31,29 +31,15 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 		let d: vscode.Diagnostic[] = [];
-		try {
-			//@ts-ignore
-			parser.default.parse(doc.getText());
-		} catch (err) {
-			if (err instanceof Error && err.message) {
-				//parse error
-				const lines = err.message.split('\n');
-				const m1 = /Line (\d+): (.*)/.exec(lines[0]);
-				if (m1) {
-					const column = lines[lines.length - 1].indexOf('^') - 1;
-					d.push(new vscode.Diagnostic(
-						new vscode.Range(Number(m1[1]) - 1, column - 1, Number(m1[1]) - 1, column),
-						m1[2]
-					));
-				}
-			}
-
-		}
+		parseRegExp(doc.getText(), d);
 		diag.set(doc.uri, d)
 	};
 	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => validate(e.document)));
 	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(e => validate(e)));
-	context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(e => diag.set(e.uri, undefined)));
+	context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(e => {
+		console.log('CLOSE', e.uri.toString());
+		diag.set(e.uri, undefined)
+	}));
 
 }
 
@@ -77,6 +63,8 @@ class RegexpRenderer implements vscode.NotebookOutputRenderer {
 		}
 		const container = `cell_container_${cell.handle}`;
 		const value = output.data['x-application/regexp'];
+
+		console.log('HERE', value);
 
 		return `
 	<div id="${container}" data-value="${encodeURIComponent(value)}">
@@ -181,12 +169,12 @@ class RegexpProvider implements vscode.NotebookProvider {
 		let cells: vscode.NotebookCell[] = [];
 		try {
 			const cellData = <string[]>JSON.parse(contents);
-			cells = cellData.map(value => editor.createCell(value, 'regexp', vscode.CellKind.Code, [{
-				outputKind: vscode.CellOutputKind.Rich,
-				data: {
-					'x-application/regexp': value,
-				}
-			}]));
+			for (let data of cellData) {
+				const cell = editor.createCell(data, 'regexp', vscode.CellKind.Code, []);
+				this._setOutput(cell);
+				cells.push(cell);
+			}
+
 		} catch (err) {
 			console.error(contents);
 			console.error(err);
@@ -211,14 +199,27 @@ class RegexpProvider implements vscode.NotebookProvider {
 			return;
 		}
 
-		const value = cell.getContent();
+		this._setOutput(cell);
+	}
 
-		cell.outputs = [{
-			outputKind: vscode.CellOutputKind.Rich,
-			data: {
-				'x-application/regexp': value,
-			}
-		}];
+	private _setOutput(cell: vscode.NotebookCell): void {
+		const value = cell.getContent();
+		if (isValid(value)) {
+			cell.outputs = [{
+				outputKind: vscode.CellOutputKind.Rich,
+				data: {
+					'x-application/regexp': value,
+				}
+			}];
+		} else {
+			cell.outputs = [{
+				outputKind: vscode.CellOutputKind.Rich,
+				data: {
+					'text/plain': 'Invalid Regular Expression',
+				}
+			}];
+		}
+
 	}
 
 	async save(document: vscode.NotebookDocument): Promise<boolean> {
@@ -230,3 +231,28 @@ class RegexpProvider implements vscode.NotebookProvider {
 		return true;
 	}
 }
+
+function isValid(value: string): boolean {
+	const bucket: any[] = [];
+	parseRegExp(value, bucket);
+	return bucket.length === 0;
+}
+
+function parseRegExp(value: string, bucket: vscode.Diagnostic[]) {
+	try {
+		//@ts-ignore
+		parser.default.parse(value);
+
+	} catch (err) {
+		if (err instanceof Error && err.message) {
+			//parse error
+			const lines = err.message.split('\n');
+			const m1 = /Line (\d+): (.*)/.exec(lines[0]);
+			if (m1) {
+				const column = lines[lines.length - 1].indexOf('^') - 1;
+				bucket.push(new vscode.Diagnostic(new vscode.Range(Number(m1[1]) - 1, column - 1, Number(m1[1]) - 1, column), m1[2]));
+			}
+		}
+	}
+}
+
