@@ -10,7 +10,12 @@ export function activate(context: vscode.ExtensionContext) {
 	// fake definitions
 	context.subscriptions.push(vscode.languages.registerDefinitionProvider({ scheme: 'vscode-notebook' }, new class implements vscode.DefinitionProvider {
 
-		provideDefinition(document: vscode.TextDocument, position: vscode.Position) {
+		async provideDefinition(document: vscode.TextDocument, position: vscode.Position) {
+
+			if (!vscode.window.activeNotebookDocument) {
+				// this is bad, a provider should be self-contained
+				return;
+			}
 
 			const range = document.getWordRangeAtPosition(position);
 			if (!range) {
@@ -19,14 +24,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const word = document.getText(range);
 			const locs: vscode.Location[] = [];
+			let found = false;
 
-			for (let doc of vscode.workspace.textDocuments) {
+			for (let cell of vscode.window.activeNotebookDocument.cells) {
+				found = found || cell.uri === document.uri;
 
-				if (doc.uri.scheme !== 'vscode-notebook' || doc.uri.query !== document.uri.query) {
-					// must be a cell from this notebook
-					continue;
-				}
-
+				const doc = await vscode.workspace.openTextDocument(cell.uri);
 				const text = doc.getText();
 				const pattern = new RegExp(`\\b${word}\\b`, 'g');
 
@@ -37,7 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			// return all?
-			return locs[0];
+			return found ? locs[0] : undefined;
 		}
 	}));
 
