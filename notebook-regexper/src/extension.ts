@@ -161,16 +161,25 @@ class RegexpRenderer implements vscode.NotebookOutputRenderer {
 	}
 }
 
+interface RawNotebookCell {
+	language: string;
+	value: string;
+	kind: vscode.CellKind;
+}
+
 class RegexpProvider implements vscode.NotebookProvider {
 
 	async resolveNotebook(editor: vscode.NotebookEditor): Promise<void> {
 
+		// confusing and hard to discover... better to add during register or return from here?
+		editor.document.languages = ['regexp'];
+
 		const contents = Buffer.from(await vscode.workspace.fs.readFile(editor.document.uri)).toString('utf8')
 		let cells: vscode.NotebookCell[] = [];
 		try {
-			const cellData = <string[]>JSON.parse(contents);
+			const cellData = <RawNotebookCell[]>JSON.parse(contents);
 			for (let data of cellData) {
-				const cell = editor.createCell(data, 'regexp', vscode.CellKind.Code, []);
+				const cell = editor.createCell(data.value, data.language, data.kind, []);
 				this._setOutput(cell);
 				cells.push(cell);
 			}
@@ -203,29 +212,34 @@ class RegexpProvider implements vscode.NotebookProvider {
 	}
 
 	private _setOutput(cell: vscode.NotebookCell): void {
-		const value = cell.getContent();
-		if (isValid(value)) {
-			cell.outputs = [{
-				outputKind: vscode.CellOutputKind.Rich,
-				data: {
-					'x-application/regexp': value,
-				}
-			}];
-		} else {
-			cell.outputs = [{
-				outputKind: vscode.CellOutputKind.Rich,
-				data: {
-					'text/plain': 'Invalid Regular Expression',
-				}
-			}];
+		if (cell.language === 'regexp') {
+			const value = cell.getContent();
+			if (isValid(value)) {
+				cell.outputs = [{
+					outputKind: vscode.CellOutputKind.Rich,
+					data: {
+						'x-application/regexp': value,
+					}
+				}];
+			} else {
+				cell.outputs = [{
+					outputKind: vscode.CellOutputKind.Rich,
+					data: {
+						'text/plain': 'Invalid Regular Expression',
+					}
+				}];
+			}
 		}
-
 	}
 
 	async save(document: vscode.NotebookDocument): Promise<boolean> {
-		let contents: string[] = [];
+		let contents: RawNotebookCell[] = [];
 		for (let cell of document.cells) {
-			contents.push(cell.getContent() || '/empty/');
+			contents.push({
+				kind: cell.cellKind,
+				language: cell.language,
+				value: cell.getContent()
+			});
 		}
 		await vscode.workspace.fs.writeFile(document.uri, Buffer.from(JSON.stringify(contents)));
 		return true;
