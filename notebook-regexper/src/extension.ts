@@ -241,6 +241,7 @@ class RegexpProvider implements vscode.NotebookProvider {
 				value: cell.getContent()
 			});
 		}
+		// API - allow to throw FS errors?
 		await vscode.workspace.fs.writeFile(document.uri, Buffer.from(JSON.stringify(contents)));
 		return true;
 	}
