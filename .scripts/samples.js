@@ -17,10 +17,6 @@ const samples = [
         path: 'notebook-renderer'
     },
     {
-        description: 'Notebook Fake Language',
-        path: 'notebook-lang-brain'
-    },
-    {
         description: 'Notebook Regexper',
         path: 'notebook-regexper'
     }
