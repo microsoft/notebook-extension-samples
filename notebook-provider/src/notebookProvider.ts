@@ -185,12 +185,15 @@ export class JupyterNotebook {
 				}
 			}
 
+			const cellEditable = raw_cell.metadata?.editable;
+			const metadata =  { editable: cellEditable === undefined ? true: cellEditable };
 
 			let managedCell = editor.createCell(
 				raw_cell.source ? raw_cell.source.join('') : '',
 				notebookJSON?.metadata?.language_info?.name || 'python',
 				raw_cell.cell_type === 'code' ? vscode.CellKind.Code :vscode.CellKind.Markdown,
-				outputs
+				outputs,
+				metadata
 			);
 
 			this.mapping.set(managedCell.handle, raw_cell);
@@ -200,6 +203,7 @@ export class JupyterNotebook {
 		editor.document.languages = ['python'];
 		editor.document.displayOrder = this.displayOrders;
 		editor.document.cells = cells;
+		editor.document.metadata = { editable: notebookJSON?.metadata?.editable === undefined ? true : notebookJSON?.metadata?.editable };
 	}
 
 	execute(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined) {
