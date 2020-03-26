@@ -12,8 +12,8 @@ import { NotebookProvider } from './notebookProvider';
 export function activate(context: vscode.ExtensionContext) {
 	console.log(context.extensionPath);
 
-	context.subscriptions.push(vscode.window.registerNotebookProvider('jupyter', new NotebookProvider(context.extensionPath, true)));
-	context.subscriptions.push(vscode.window.registerNotebookProvider('jupytertest', new NotebookProvider(context.extensionPath, false)));
+	context.subscriptions.push(vscode.notebook.registerNotebookProvider('jupyter', new NotebookProvider(context.extensionPath, true)));
+	context.subscriptions.push(vscode.notebook.registerNotebookProvider('jupytertest', new NotebookProvider(context.extensionPath, false)));
 	// context.subscriptions.push(vscode.window.registerNotebookOutputRenderer(
 	// 	'kerneltest',
 	// 	{
@@ -34,8 +34,8 @@ export function activate(context: vscode.ExtensionContext) {
 	// ));
 
 	vscode.commands.registerCommand('notebook.saveToMarkdown', () => {
-		if (vscode.window.activeNotebookDocument) {
-			let document = vscode.window.activeNotebookDocument;
+		if (vscode.notebook.activeNotebookDocument) {
+			let document = vscode.notebook.activeNotebookDocument;
 			let uri = document.uri;
 			let fsPath = uri.fsPath;
 			let baseName = path.basename(fsPath, path.extname(fsPath));
@@ -47,9 +47,9 @@ export function activate(context: vscode.ExtensionContext) {
 				let cell = document.cells[i];
 				let language = cell.language || '';
 				if (cell.cellKind === vscode.CellKind.Markdown) {
-					content += cell.getContent() + '\n';
+					content += cell.source + '\n';
 				} else {
-					content += '```' + language + '\n' + cell.getContent() + '```\n\n';
+					content += '```' + language + '\n' + cell.source + '```\n\n';
 				}
 			}
 

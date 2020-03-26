@@ -9,7 +9,7 @@ import { NteractRenderer } from './nteractRenderer';
 export function activate(context: vscode.ExtensionContext) {
 	console.log(context.extensionPath);
 
-	context.subscriptions.push(vscode.window.registerNotebookOutputRenderer(
+	context.subscriptions.push(vscode.notebook.registerNotebookOutputRenderer(
 		'nteract',
 		{
 			type: 'display_data',

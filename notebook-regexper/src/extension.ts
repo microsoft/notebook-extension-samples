@@ -12,8 +12,8 @@ import * as parser from '../regexper/parser/javascript/parser';
 export function activate(context: vscode.ExtensionContext) {
 
 	// notebook stuff
-	context.subscriptions.push(vscode.window.registerNotebookProvider('regexp', new RegexpProvider()));
-	context.subscriptions.push(vscode.window.registerNotebookOutputRenderer(
+	context.subscriptions.push(vscode.notebook.registerNotebookProvider('regexp', new RegexpProvider()));
+	context.subscriptions.push(vscode.notebook.registerNotebookOutputRenderer(
 		'regexp',
 		{
 			type: 'display_data',
@@ -55,13 +55,14 @@ class RegexpRenderer implements vscode.NotebookOutputRenderer {
 			//todo@joh cannot be CSS
 		];
 	}
-	render(_document: vscode.NotebookDocument, cell: vscode.NotebookCell, output: vscode.CellOutput, _mimeType: string): string {
+	render(_document: vscode.NotebookDocument, output: vscode.CellOutput, _mimeType: string): string {
 
 		if (output.outputKind !== vscode.CellOutputKind.Rich) {
 			// todo@typing hole
 			return '???';
 		}
-		const container = `cell_container_${cell.handle}`;
+		const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+		const container = `cell_container_${uuid}`;
 		const value = output.data['x-application/regexp'];
 
 		console.log('HERE', value);
@@ -178,30 +179,29 @@ class RegexpProvider implements vscode.NotebookProvider {
 
 		const contents = Buffer.from(await vscode.workspace.fs.readFile(editor.document.uri)).toString('utf8')
 		let cells: vscode.NotebookCell[] = [];
-		try {
-			const cellData = <RawNotebookCell[]>JSON.parse(contents);
-			for (let data of cellData) {
-				const cell = editor.createCell(data.value, data.language, data.kind, [], { editable: true, runnable: true });
-				this._setOutput(cell);
-				cells.push(cell);
-			}
 
-		} catch (err) {
-			console.error(contents);
-			console.error(err);
-		}
-
-		if (cells.length === 0) {
-			const sample = '/Hello (World|Welt)!/';
-			cells.push(editor.createCell(sample, 'regexp', vscode.CellKind.Code, [{
-				outputKind: vscode.CellOutputKind.Rich,
-				data: {
-					'x-application/regexp': sample,
+		await editor.edit(editBuilder => {
+			try {
+				const cellData = <RawNotebookCell[]>JSON.parse(contents);
+				for (let data of cellData) {
+					editBuilder.insert(0, data.value, data.language, data.kind, [], { editable: true, runnable: true });
 				}
-			}], { editable: true, runnable: true }));
-		}
-
-		editor.document.cells = cells;
+	
+			} catch (err) {
+				console.error(contents);
+				console.error(err);
+			}
+	
+			if (cells.length === 0) {
+				const sample = '/Hello (World|Welt)!/';
+				editBuilder.insert(0, sample, 'regexp', vscode.CellKind.Code, [{
+					outputKind: vscode.CellOutputKind.Rich,
+					data: {
+						'x-application/regexp': sample,
+					}
+				}], { editable: true, runnable: true });
+			}
+		});
 	}
 
 	async executeCell(_document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined): Promise<void> {
@@ -215,7 +215,7 @@ class RegexpProvider implements vscode.NotebookProvider {
 
 	private _setOutput(cell: vscode.NotebookCell): void {
 		if (cell.language === 'regexp') {
-			const value = cell.getContent();
+			const value = cell.source;
 			if (isValid(value)) {
 				cell.outputs = [{
 					outputKind: vscode.CellOutputKind.Rich,
@@ -240,7 +240,7 @@ class RegexpProvider implements vscode.NotebookProvider {
 			contents.push({
 				kind: cell.cellKind,
 				language: cell.language,
-				value: cell.getContent()
+				value: cell.source
 			});
 		}
 		// API - allow to throw FS errors?

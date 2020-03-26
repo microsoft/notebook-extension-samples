@@ -151,59 +151,12 @@ export class JupyterNotebook {
 
 	constructor(
 		private _extensionPath: string,
-		editor: vscode.NotebookEditor,
+		private editor: vscode.NotebookEditor,
 		public notebookJSON: any,
 		private fillOutputs: boolean
 	) {
-		let cells = notebookJSON.cells.map(((raw_cell: RawCell) => {
-			let outputs: vscode.CellOutput[] = [];
-			if (fillOutputs) {
-				outputs = raw_cell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
-
-				if (!this.preloadScript) {
-					let containHTML = this.containHTML(raw_cell);
-
-					if (containHTML) {
-						this.preloadScript = true;
-						const scriptPathOnDisk = vscode.Uri.file(
-							path.join(this._extensionPath, 'dist', 'ipywidgets.js')
-						);
-
-						let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
-
-						outputs.unshift(
-							{
-								outputKind: vscode.CellOutputKind.Rich,
-								'data': {
-									'text/html': [
-										`<script src="${scriptUri}"></script>\n`,
-									]
-								}
-							}
-						);
-					}
-				}
-			}
-
-			const cellEditable = raw_cell.metadata?.editable;
-			const runnable = raw_cell.metadata?.runnable;
-			const metadata = { editable: cellEditable, runnable: runnable };
-
-			let managedCell = editor.createCell(
-				raw_cell.source ? raw_cell.source.join('') : '',
-				notebookJSON?.metadata?.language_info?.name || 'python',
-				raw_cell.cell_type === 'code' ? vscode.CellKind.Code :vscode.CellKind.Markdown,
-				outputs,
-				metadata
-			);
-
-			this.mapping.set(managedCell.handle, raw_cell);
-			return managedCell;
-		}));
-
 		editor.document.languages = ['python'];
 		editor.document.displayOrder = this.displayOrders;
-		editor.document.cells = cells;
 		editor.document.metadata = {
 			editable: notebookJSON?.metadata?.editable === undefined ? true : notebookJSON?.metadata?.editable,
 			cellEditable: notebookJSON?.metadata?.cellEditable === undefined ? true : notebookJSON?.metadata?.cellEditable,
@@ -211,9 +164,58 @@ export class JupyterNotebook {
 		};
 	}
 
+	async resolve() {
+		await this.editor.edit((editBuilder => {
+			this.notebookJSON.cells.forEach(((raw_cell: RawCell) => {
+				let outputs: vscode.CellOutput[] = [];
+				if (this.fillOutputs) {
+					outputs = raw_cell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
+	
+					if (!this.preloadScript) {
+						let containHTML = this.containHTML(raw_cell);
+	
+						if (containHTML) {
+							this.preloadScript = true;
+							const scriptPathOnDisk = vscode.Uri.file(
+								path.join(this._extensionPath, 'dist', 'ipywidgets.js')
+							);
+	
+							let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
+	
+							outputs.unshift(
+								{
+									outputKind: vscode.CellOutputKind.Rich,
+									'data': {
+										'text/html': [
+											`<script src="${scriptUri}"></script>\n`,
+										]
+									}
+								}
+							);
+						}
+					}
+				}
+	
+				const cellEditable = raw_cell.metadata?.editable;
+				const runnable = raw_cell.metadata?.runnable;
+				const metadata = { editable: cellEditable, runnable: runnable };
+	
+				editBuilder.insert(
+					0,
+					raw_cell.source ? raw_cell.source.join('') : '',
+					this.notebookJSON?.metadata?.language_info?.name || 'python',
+					raw_cell.cell_type === 'code' ? vscode.CellKind.Code :vscode.CellKind.Markdown,
+					outputs,
+					metadata
+				);
+			}));
+		}));
+	}
+
 	execute(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined) {
 		if (cell) {
-			let rawCell: RawCell = this.mapping.get(cell.handle);
+			const index = document.cells.indexOf(cell);
+			let rawCell: RawCell = this.notebookJSON.cells[index];
 
 			if (!this.preloadScript) {
 				let containHTML = this.containHTML(rawCell);
@@ -242,8 +244,8 @@ export class JupyterNotebook {
 			if (!this.fillOutputs) {
 				for (let i = 0; i < document.cells.length; i++) {
 					let cell = document.cells[i];
-
-					let rawCell: RawCell = this.mapping.get(cell.handle);
+	
+					let rawCell: RawCell = this.notebookJSON.cells[i];
 
 					if (!this.preloadScript) {
 						let containHTML = this.containHTML(rawCell);
@@ -328,6 +330,7 @@ export class NotebookProvider implements vscode.NotebookProvider {
 				};
 			}
 			let jupyterNotebook = new JupyterNotebook(this._extensionPath, editor, json, this.fillOutputs);
+			await jupyterNotebook.resolve();
 			this._notebooks.set(editor.document.uri.toString(), jupyterNotebook);
 		} catch {
 
@@ -346,7 +349,7 @@ export class NotebookProvider implements vscode.NotebookProvider {
 		let cells: RawCell[] = [];
 
 		for (let i = 0; i < document.cells.length; i++) {
-			let lines = document.cells[i].getContent().split(/\r|\n|\r\n/g);
+			let lines = document.cells[i].source.split(/\r|\n|\r\n/g);
 			let source = lines.map((value, index) => {
 				if (index !== lines.length - 1) {
 					return value + '\n';
