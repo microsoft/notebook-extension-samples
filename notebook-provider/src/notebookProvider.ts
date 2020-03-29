@@ -49,6 +49,7 @@ export interface RawCell {
 	outputs?: RawCellOutput[];
 	source: string[];
 	metadata: any;
+	execution_count?: number;
 }
 
 export class Cell {
@@ -148,6 +149,7 @@ export class JupyterNotebook {
 		'image/jpeg',
 		'text/plain'
 	];
+	private nextExecutionOrder = 0;
 
 	constructor(
 		private _extensionPath: string,
@@ -170,18 +172,18 @@ export class JupyterNotebook {
 				let outputs: vscode.CellOutput[] = [];
 				if (this.fillOutputs) {
 					outputs = raw_cell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
-	
+
 					if (!this.preloadScript) {
 						let containHTML = this.containHTML(raw_cell);
-	
+
 						if (containHTML) {
 							this.preloadScript = true;
 							const scriptPathOnDisk = vscode.Uri.file(
 								path.join(this._extensionPath, 'dist', 'ipywidgets.js')
 							);
-	
+
 							let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
-	
+
 							outputs.unshift(
 								{
 									outputKind: vscode.CellOutputKind.Rich,
@@ -195,11 +197,19 @@ export class JupyterNotebook {
 						}
 					}
 				}
-	
+
+
+				const executionOrder = typeof raw_cell.execution_count === 'number' ? raw_cell.execution_count : undefined;
+				if (typeof executionOrder === 'number') {
+					if (executionOrder >= this.nextExecutionOrder) {
+						this.nextExecutionOrder = executionOrder + 1;
+					}
+				}
+
 				const cellEditable = raw_cell.metadata?.editable;
 				const runnable = raw_cell.metadata?.runnable;
-				const metadata = { editable: cellEditable, runnable: runnable };
-	
+				const metadata = { editable: cellEditable, runnable: runnable, executionOrder };
+
 				editBuilder.insert(
 					0,
 					raw_cell.source ? raw_cell.source.join('') : '',
@@ -210,6 +220,10 @@ export class JupyterNotebook {
 				);
 			}));
 		}));
+	}
+
+	private getNextExecutionOrder(): number {
+		return this.nextExecutionOrder++;
 	}
 
 	execute(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined) {
@@ -240,11 +254,15 @@ export class JupyterNotebook {
 				}
 			}
 			cell.outputs = rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
+			const executionOrder = this.getNextExecutionOrder();
+			if (cell.metadata) {
+				cell.metadata.executionOrder = executionOrder;
+			}
 		} else {
 			if (!this.fillOutputs) {
 				for (let i = 0; i < document.cells.length; i++) {
 					let cell = document.cells[i];
-	
+
 					let rawCell: RawCell = this.notebookJSON.cells[i];
 
 					if (!this.preloadScript) {
@@ -270,6 +288,10 @@ export class JupyterNotebook {
 						}
 					}
 					cell.outputs = rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
+					const executionOrder = this.getNextExecutionOrder();
+					if (cell.metadata) {
+						cell.metadata.executionOrder = executionOrder;
+					}
 				}
 
 				this.fillOutputs = true;
@@ -377,7 +399,8 @@ export class NotebookProvider implements vscode.NotebookProvider {
 						}
 					},
 					cell_type: document.cells[i].cellKind === vscode.CellKind.Markdown ? 'markdown' : 'code',
-					outputs: document.cells[i].outputs.map(output => transformOutputFromCore(output))
+					outputs: document.cells[i].outputs.map(output => transformOutputFromCore(output)),
+					execution_count: document.cells[i].metadata?.executionOrder
 				});
 			}
 		}
