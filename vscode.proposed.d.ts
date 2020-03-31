@@ -1716,6 +1716,11 @@ declare module 'vscode' {
 		 */
 		cellRunnable: boolean;
 
+		/**
+		 * Whether the [execution order](#NotebookCellMetadata.executionOrder) indicator will be displayed.
+		 * Defaults to true.
+		 */
+		hasExecutionOrder: boolean;
 	}
 
 	export interface NotebookDocument {

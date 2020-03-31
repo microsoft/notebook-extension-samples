@@ -175,7 +175,7 @@ class RegexpProvider implements vscode.NotebookProvider {
 		// confusing and hard to discover... better to add during register or return from here?
 		editor.document.languages = ['regexp'];
 
-		editor.document.metadata = { editable: true, cellEditable: true, cellRunnable: true };
+		editor.document.metadata = { editable: true, cellEditable: true, cellRunnable: true, hasExecutionOrder: false };
 
 		const contents = Buffer.from(await vscode.workspace.fs.readFile(editor.document.uri)).toString('utf8')
 		let cells: vscode.NotebookCell[] = [];
@@ -186,12 +186,12 @@ class RegexpProvider implements vscode.NotebookProvider {
 				for (let data of cellData) {
 					editBuilder.insert(0, data.value, data.language, data.kind, [], { editable: true, runnable: true });
 				}
-	
+
 			} catch (err) {
 				console.error(contents);
 				console.error(err);
 			}
-	
+
 			if (cells.length === 0) {
 				const sample = '/Hello (World|Welt)!/';
 				editBuilder.insert(0, sample, 'regexp', vscode.CellKind.Code, [{

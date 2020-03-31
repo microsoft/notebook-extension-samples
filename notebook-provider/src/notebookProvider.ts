@@ -162,7 +162,8 @@ export class JupyterNotebook {
 		editor.document.metadata = {
 			editable: notebookJSON?.metadata?.editable === undefined ? true : notebookJSON?.metadata?.editable,
 			cellEditable: notebookJSON?.metadata?.cellEditable === undefined ? true : notebookJSON?.metadata?.cellEditable,
-			cellRunnable: notebookJSON?.metadata?.cellRunnable === undefined ? true : notebookJSON?.metadata?.cellRunnable
+			cellRunnable: notebookJSON?.metadata?.cellRunnable === undefined ? true : notebookJSON?.metadata?.cellRunnable,
+			hasExecutionOrder: true
 		};
 	}
 
