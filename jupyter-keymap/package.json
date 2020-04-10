@@ -1,0 +1,122 @@
+{
+	"name": "jupyter-keymap",
+	"displayName": "Jupyter Keymap",
+	"description": "Jupyter Keymap for Notebook",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.44.0"
+	},
+	"categories": [
+		"Keymaps"
+	],
+	"activationEvents": [
+		"*"
+	],
+	"extensionKind": "ui",
+	"main": "./out/extension.js",
+	"contributes": {
+		"keybindings": [
+			{
+				"mac": "F",
+				"win": "F",
+				"linux": "F",
+				"key": "F",
+				"when": "notebookEditorFocused && !inputFocus",
+				"command": "workbench.action.notebook.find"
+			},
+			{
+				"mac": "P",
+				"win": "P",
+				"linux": "P",
+				"key": "P",
+				"when": "notebookEditorFocused && !inputFocus",
+				"command": "workbench.action.showCommands"
+			},
+			{
+				"mac": "K",
+				"win": "K",
+				"linux": "K",
+				"key": "K",
+				"when": "notebookEditorFocused && !inputFocus",
+				"command": "list.focusUp"
+			},
+			{
+				"mac": "J",
+				"win": "J",
+				"linux": "J",
+				"key": "J",
+				"when": "notebookEditorFocused && !inputFocus",
+				"command": "list.focusDown"
+			},
+			{
+				"mac": "A",
+				"win": "A",
+				"linux": "A",
+				"key": "A",
+				"when": "notebookEditorFocused && !inputFocus",
+				"command": "workbench.notebook.code.insertCellAbove"
+			},
+			{
+				"mac": "B",
+				"win": "B",
+				"linux": "B",
+				"key": "B",
+				"when": "notebookEditorFocused && !inputFocus",
+				"command": "workbench.notebook.code.insertCellBelow"
+			},
+			{
+				"mac": "D D",
+				"win": "D D",
+				"linux": "D D",
+				"key": "D D",
+				"when": "notebookEditorFocused && !inputFocus",
+				"command": "workbench.notebook.cell.delete"
+			},
+			{
+				"mac": "Z",
+				"win": "Z",
+				"linux": "Z",
+				"key": "Z",
+				"when": "notebookEditorFocused && !inputFocus",
+				"command": "workbench.action.notebook.undo"
+			},
+			{
+				"mac": "ctrl+m",
+				"win": "ctrl+m",
+				"linux": "ctrl+m",
+				"key": "ctrl+m",
+				"when": "notebookEditorFocused && inputFocus",
+				"command": "workbench.action.quitNotebookEdit"
+			},
+			{
+				"mac": "cmd+shift+u",
+				"win": "ctrl+shift+u",
+				"linux": "ctrl+shift+u",
+				"key": "ctrl+shift+u",
+				"when": "notebookEditorFocused && inputFocus",
+				"command": "cursorRedo"
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "yarn run compile",
+		"compile": "tsc -p ./",
+		"lint": "eslint src --ext ts",
+		"watch": "tsc -watch -p ./",
+		"pretest": "yarn run compile && yarn run lint",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/glob": "^7.1.1",
+		"@types/mocha": "^7.0.1",
+		"@types/node": "^12.11.7",
+		"@types/vscode": "^1.44.0",
+		"eslint": "^6.8.0",
+		"@typescript-eslint/parser": "^2.18.0",
+		"@typescript-eslint/eslint-plugin": "^2.18.0",
+		"glob": "^7.1.6",
+		"mocha": "^7.0.1",
+		"typescript": "^3.7.5",
+		"vscode-test": "^1.3.0"
+	}
+}
