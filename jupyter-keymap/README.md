@@ -17,12 +17,7 @@ Command Mode (press Esc to enable)
 | Y | change cell to code | ✔️ | |
 | M | change cell to markdown | ✔️ | |
 | R | change cell to raw | | |
-| 1 | change cell to heading 1 | | |
-| 2 | change cell to heading 2 | | |
-| 3 | change cell to heading 3 | | |
-| 4 | change cell to heading 4 | | |
-| 5 | change cell to heading 5 | | |
-| 6 | change cell to heading 6 | | |
+| 1,2,3,4,5,6 | change cell to heading 1,2,3,4,5,6 | | |
 | K | select cell above | ✔️ | |
 | ↑ | select cell above | ✔️ | |
 | ↓ | select cell below | ✔️ | |
