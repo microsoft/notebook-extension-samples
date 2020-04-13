@@ -25,14 +25,6 @@
 				"command": "workbench.action.notebook.find"
 			},
 			{
-				"mac": "P",
-				"win": "P",
-				"linux": "P",
-				"key": "P",
-				"when": "notebookEditorFocused && !inputFocus",
-				"command": "workbench.action.showCommands"
-			},
-			{
 				"mac": "K",
 				"win": "K",
 				"linux": "K",
