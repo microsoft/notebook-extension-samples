@@ -10,7 +10,7 @@ Command Mode (press Esc to enable)
 | ↩ | enter edit mode | ✔️ | |
 | ⌘⇧F | open the command palette | | |
 | ⌘⇧P | open the command palette | ✔️ | |
-| P | open the command palette | ✔️ | |
+| P | open the command palette | 🔴https://github.com/microsoft/vscode/issues/40389 | |
 | ⇧↩ | run cell, select below | ✔️ | |
 | ⌃↩ | run selected cells | ✔️ | |
 | ⌥↩ | run cell and insert below | ✔️ | |
