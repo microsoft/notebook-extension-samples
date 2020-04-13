@@ -28,10 +28,10 @@ Command Mode (press Esc to enable)
 | ⇧J | extend selected cells below | | |
 | A | insert cell above | ✔️ | |
 | B | insert cell below | ✔️ | |
-| X | cut selected cells |  | |
-| C | copy selected cells |  | |
-| ⇧V | paste cells above |  | |
-| V | paste cells below |  | |
+| X | cut selected cells | ✔️ | |
+| C | copy selected cells | ✔️ | |
+| ⇧V | paste cells above | ✔️ | |
+| V | paste cells below | ✔️ | |
 | Z | undo cell deletion | ✔️ | |
 | D,D | delete selected cells | ✔️ | |
 | ⇧M | merge selected cells, or current cell with cell below if only one cell is selected | | |
