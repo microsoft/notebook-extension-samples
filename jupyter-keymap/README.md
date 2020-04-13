@@ -36,7 +36,7 @@ Command Mode (press Esc to enable)
 | D,D | delete selected cells | ✔️ | |
 | ⇧M | merge selected cells, or current cell with cell below if only one cell is selected | | |
 | ⌘S | Save and Checkpoint | | |
-| S | Save and Checkpoint |  | |
+| S | Save and Checkpoint | ✔️ | |
 | L | toggle line numbers | | |
 | O | toggle output of selected cells | | |
 | ⇧O | toggle output scrolling of selected cells | | |
@@ -84,6 +84,6 @@ Edit Mode (press Enter to enable)
 | ⌃↩ | run selected cells | ✔️ | |
 | ⌥↩ | run cell and insert below | ✔️ | |
 | ⌃⇧Minus | split cell at cursor | | |
-| ⌘S | Save and Checkpoint | | |
+| ⌘S | Save and Checkpoint | ✔️ | |
 | ↓ | move cursor down | ✔️ | |
 | ↑ | move cursor up | ✔️ | |
