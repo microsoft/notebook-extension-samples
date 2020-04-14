@@ -42,7 +42,7 @@ Command Mode (press Esc to enable)
 | V | paste cells below | ✔️ | |
 | Z | undo cell deletion | ✔️ | |
 | D,D | delete selected cells | ✔️ | |
-| ⇧M | merge selected cells, or current cell with cell below if only one cell is selected | | |
+| ⇧M | merge selected cells, or current cell with cell below if only one cell is selected | 🟢 | |
 | ⌘S | Save and Checkpoint | ✔️ | |
 | S | Save and Checkpoint | ✔️ | |
 | L | toggle line numbers | | |
@@ -91,7 +91,7 @@ Edit Mode (press Enter to enable)
 | ⇧↩ | run cell, select below | ✔️ | |
 | ⌃↩ | run selected cells | ✔️ | |
 | ⌥↩ | run cell and insert below | ✔️ | |
-| ⌃⇧Minus | split cell at cursor | | |
+| ⌃⇧Minus | split cell at cursor | 🟢 | |
 | ⌘S | Save and Checkpoint | ✔️ | |
 | ↓ | move cursor down | ✔️ | |
 | ↑ | move cursor up | ✔️ | |
