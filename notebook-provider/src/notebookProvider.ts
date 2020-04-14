@@ -227,7 +227,7 @@ export class JupyterNotebook {
 		return this.nextExecutionOrder++;
 	}
 
-	execute(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined) {
+	async execute(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined) {
 		if (cell) {
 			const index = document.cells.indexOf(cell);
 			let rawCell: RawCell = this.notebookJSON.cells[index];
@@ -311,6 +311,9 @@ export class JupyterNotebook {
 	}
 }
 
+// For test
+const DELAY_EXECUTION = false;
+
 export class NotebookProvider implements vscode.NotebookProvider {
 	private _onDidChangeNotebook = new vscode.EventEmitter<{ resource: vscode.Uri; notebook: vscode.NotebookDocument; }>();
 	onDidChangeNotebook: vscode.Event<{ resource: vscode.Uri; notebook: vscode.NotebookDocument; }> = this._onDidChangeNotebook.event;
@@ -360,12 +363,29 @@ export class NotebookProvider implements vscode.NotebookProvider {
 		}
 	}
 
-	async executeCell(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined): Promise<void> {
-		let jupyterNotebook = this._notebooks.get(document.uri.toString());
-
-		if (jupyterNotebook) {
-			jupyterNotebook.execute(document, cell);
+	async executeCell(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined, token: vscode.CancellationToken): Promise<void> {
+		if (DELAY_EXECUTION) {
+			return this._executeCellDelayed(document, cell, token);
 		}
+
+		const jupyterNotebook = this._notebooks.get(document.uri.toString());
+		if (jupyterNotebook) {
+			return jupyterNotebook.execute(document, cell);
+		}
+	}
+
+	private async _executeCellDelayed(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined, token: vscode.CancellationToken): Promise<void> {
+		let jupyterNotebook = this._notebooks.get(document.uri.toString());
+		return new Promise(async resolve => {
+			token.onCancellationRequested(() => {
+				resolve();
+			});
+
+			await new Promise(resolve => setTimeout(resolve, 2000));
+			if (jupyterNotebook && !token.isCancellationRequested) {
+				return jupyterNotebook.execute(document, cell).then(resolve);
+			}
+		});
 	}
 
 	async save(document: vscode.NotebookDocument): Promise<boolean> {
