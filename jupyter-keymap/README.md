@@ -43,12 +43,12 @@ Command Mode (press Esc to enable)
 | Z | undo cell deletion | ✔️ | |
 | D,D | delete selected cells | ✔️ | |
 | ⇧M | merge selected cells, or current cell with cell below if only one cell is selected | | |
-| ⌘S | Save and Checkpoint | | |
+| ⌘S | Save and Checkpoint | ✔️ | |
 | S | Save and Checkpoint | ✔️ | |
 | L | toggle line numbers | | |
 | O | toggle output of selected cells | | |
 | ⇧O | toggle output scrolling of selected cells | | |
-| H | show keyboard shortcuts | | |
+| H | show keyboard shortcuts | ✔️ | |
 | I,I | interrupt the kernel | 🟢 | |
 | 0,0 | restart the kernel (with dialog) | 🟢 | |
 | Esc | close the pager | | |
