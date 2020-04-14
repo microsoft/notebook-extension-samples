@@ -97,6 +97,14 @@
 				"command": "workbench.action.quitNotebookEdit"
 			},
 			{
+				"mac": "cmd+d",
+				"win": "ctrl+d",
+				"linux": "ctrl+d",
+				"key": "ctrl+d",
+				"when": "notebookEditorFocused && inputFocus",
+				"command": "editor.action.deleteLines"
+			},
+			{
 				"mac": "cmd+shift+u",
 				"win": "ctrl+shift+u",
 				"linux": "ctrl+shift+u",

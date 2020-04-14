@@ -48,14 +48,14 @@ Command Mode (press Esc to enable)
 | L | toggle line numbers | | |
 | O | toggle output of selected cells | | |
 | ⇧O | toggle output scrolling of selected cells | | |
+| ⇧L | toggles line numbers in all cells, and persist the setting | | |
+| ⇧␣ | scroll notebook up | | |
+| ␣ | scroll notebook down | | |
 | H | show keyboard shortcuts | ✔️ | |
 | I,I | interrupt the kernel | 🟢 | |
 | 0,0 | restart the kernel (with dialog) | 🟢 | |
 | Esc | close the pager | | |
 | Q | close the pager | | |
-| ⇧L | toggles line numbers in all cells, and persist the setting | | |
-| ⇧␣ | scroll notebook up | | |
-| ␣ | scroll notebook down | | |
 
 ### Edit Mode
 
@@ -70,7 +70,7 @@ Edit Mode (press Enter to enable)
 | ⌘A | select all | ✔️ | |
 | ⌘Z | undo | ✔️ | |
 | ⌘/ | comment | ✔️ | |
-| ⌘D | delete whole line | | |
+| ⌘D | delete whole line | ✔️ | |
 | ⌘U | undo selection | ✔️ | |
 | Insert | toggle overwrite flag | ✔️ | |
 | ⌘↑ | go to cell start | ✔️ | |
