@@ -1,5 +1,13 @@
 # Jupyter Keymap
 
+Annotations
+
+| Mark | Description | 
+| --- | --- |
+| ✔️ | supported |
+| 🔴 | blocked | 
+| 🟢 | contributed by extension | 
+
 ### Command Mode
 
 Command Mode (press Esc to enable)
@@ -41,8 +49,8 @@ Command Mode (press Esc to enable)
 | O | toggle output of selected cells | | |
 | ⇧O | toggle output scrolling of selected cells | | |
 | H | show keyboard shortcuts | | |
-| I,I | interrupt the kernel | | |
-| 0,0 | restart the kernel (with dialog) | | |
+| I,I | interrupt the kernel | 🟢 | |
+| 0,0 | restart the kernel (with dialog) | 🟢 | |
 | Esc | close the pager | | |
 | Q | close the pager | | |
 | ⇧L | toggles line numbers in all cells, and persist the setting | | |
