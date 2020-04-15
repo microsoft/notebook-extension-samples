@@ -51,7 +51,7 @@ Command Mode (press Esc to enable)
 | ⇧L | toggles line numbers in all cells, and persist the setting | | |
 | ⇧␣ | scroll notebook up | | |
 | ␣ | scroll notebook down | | |
-| H | show keyboard shortcuts | ✔️ | |
+| H | show keyboard shortcuts | 🔴https://github.com/microsoft/vscode/issues/40389 | |
 | I,I | interrupt the kernel | 🟢 | |
 | 0,0 | restart the kernel (with dialog) | 🟢 | |
 | Esc | close the pager | | |

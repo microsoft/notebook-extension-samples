@@ -81,14 +81,6 @@
 				"command": "workbench.action.files.save"
 			},
 			{
-				"mac": "H",
-				"win": "H",
-				"linux": "H",
-				"key": "H",
-				"when": "notebookEditorFocused && !inputFocus",
-				"command": "workbench.action.openGlobalKeybindings"
-			},
-			{
 				"mac": "ctrl+m",
 				"win": "ctrl+m",
 				"linux": "ctrl+m",
