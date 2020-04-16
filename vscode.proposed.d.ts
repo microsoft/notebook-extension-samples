@@ -1506,6 +1506,13 @@ declare module 'vscode' {
 
 	export type CellOutput = CellStreamOutput | CellErrorOutput | CellDisplayOutput;
 
+	export enum NotebookCellRunState {
+		Running,
+		Idle,
+		Success,
+		Error
+	}
+
 	export interface NotebookCellMetadata {
 		/**
 		 * Controls if the content of a cell is editable or not.
@@ -1527,6 +1534,11 @@ declare module 'vscode' {
 		 * A status message to be shown in the cell's status bar
 		 */
 		statusMessage?: string;
+
+		/**
+		 * The cell's current run state
+		 */
+		runState?: NotebookCellRunState;
 	}
 
 	export interface NotebookCell {

@@ -311,8 +311,23 @@ export class JupyterNotebook {
 	}
 }
 
+async function timeFn(fn: () => Promise<void>): Promise<number> {
+	const startTime = Date.now();
+	await fn();
+	return Date.now() - startTime;
+}
+
+function formatDuration(duration: number): string {
+	// const seconds = Math.floor(duration / 1000);
+	// actual: ${String(duration - seconds).charAt(0)}
+
+	const randomSeconds = Math.floor(Math.random() * 10);
+	const randomTenths = Math.floor(Math.random() * 10);
+	return `${randomSeconds}.${randomTenths}s`;
+}
+
 // For test
-const DELAY_EXECUTION = false;
+const DELAY_EXECUTION = true;
 
 export class NotebookProvider implements vscode.NotebookProvider {
 	private _onDidChangeNotebook = new vscode.EventEmitter<{ resource: vscode.Uri; notebook: vscode.NotebookDocument; }>();
@@ -364,13 +379,24 @@ export class NotebookProvider implements vscode.NotebookProvider {
 	}
 
 	async executeCell(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined, token: vscode.CancellationToken): Promise<void> {
-		if (DELAY_EXECUTION) {
-			return this._executeCellDelayed(document, cell, token);
+		if (cell) {
+			cell.metadata.runState = vscode.NotebookCellRunState.Running;
 		}
 
-		const jupyterNotebook = this._notebooks.get(document.uri.toString());
-		if (jupyterNotebook) {
-			return jupyterNotebook.execute(document, cell);
+		const duration = await timeFn(async () => {
+			if (DELAY_EXECUTION) {
+				return this._executeCellDelayed(document, cell, token);
+			}
+
+			const jupyterNotebook = this._notebooks.get(document.uri.toString());
+			if (jupyterNotebook) {
+				return jupyterNotebook.execute(document, cell);
+			}
+		});
+
+		if (cell) {
+			cell.metadata.statusMessage = formatDuration(duration);
+			cell.metadata.runState = vscode.NotebookCellRunState.Success;
 		}
 	}
 
