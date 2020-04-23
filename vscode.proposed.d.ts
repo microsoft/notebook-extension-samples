@@ -21,7 +21,10 @@ declare module 'vscode' {
 	export interface AuthenticationSession {
 		id: string;
 		getAccessToken(): Thenable<string>;
-		accountName: string;
+		account: {
+			displayName: string;
+			id: string;
+		};
 		scopes: string[]
 	}
 
@@ -75,12 +78,6 @@ declare module 'vscode' {
 		readonly displayName: string;
 
 		/**
-		 * Whether the authentication provider supports the user being logged into
-		 * multiple different accounts at the same time.
-		 */
-		supportsMultipleAccounts: boolean;
-
-		/**
 		 * An [event](#Event) which fires when the array of sessions has changed, or data
 		 * within a session has changed.
 		 */
@@ -94,7 +91,7 @@ declare module 'vscode' {
 		/**
 		 * Prompts a user to login.
 		 */
-		login(scopes?: string[]): Thenable<AuthenticationSession>;
+		login(scopes: string[]): Thenable<AuthenticationSession>;
 		logout(sessionId: string): Thenable<void>;
 	}
 
@@ -720,7 +717,43 @@ declare module 'vscode' {
 
 	//#endregion
 
-	//#region deprecated debug API
+	//#region debug: https://github.com/microsoft/vscode/issues/88230
+
+	/**
+	 * VS Code can call the `provideDebugConfigurations` method of a `DebugConfigurationProvider` in two situations (aka 'scopes'):
+	 * to provide the initial debug configurations for a newly created launch.json or to provide debug configurations dynamically based on context.
+	 * A scope can be used when registering a `DebugConfigurationProvider` with #debug.registerDebugConfigurationProvider.
+	 */
+	export enum DebugConfigurationProviderScope {
+		/**
+		 * The 'initial' scope is used to ask for debug configurations to be copied into a newly created launch.json.
+		 */
+		Initial = 1,
+		/**
+		 * The 'dynamic' scope is used to ask for additional dynamic debug configurations to be presented to the user (in addition to the static configurations from the launch.json).
+		 */
+		Dynamic = 2
+	}
+
+	export namespace debug {
+		/**
+		 * Register a [debug configuration provider](#DebugConfigurationProvider) for a specific debug type.
+		 * The optional [scope](#DebugConfigurationProviderScope) argument can be used to bind the `provideDebugConfigurations` method of the provider to a specific context (aka scope).
+		 * Currently two scopes are possible: with the value `Initial` (or if no scope argument is given) the `provideDebugConfigurations` method is used to find the initial debug configurations to be copied into a newly created launch.json.
+		 * With a scope value `Dynamic` the `provideDebugConfigurations` method is used to dynamically determine debug configurations to be presented to the user in addition to the static configurations from the launch.json.
+		 * Please note that the scope argument only applies to the `provideDebugConfigurations` method: so the `resolveDebugConfiguration` methods are not affected at all.
+		 * Registering a single provider with resolve methods for different scopes, results in the same resolve methods called multiple times.
+		 * More than one provider can be registered for the same type.
+		 *
+		 * @param type The debug type for which the provider is registered.
+		 * @param provider The [debug configuration provider](#DebugConfigurationProvider) to register.
+		 * @param scope The [scope](#DebugConfigurationProviderScope) for which the 'provideDebugConfiguration' method of the provider is registered.
+		 * @return A [disposable](#Disposable) that unregisters this provider when being disposed.
+		 */
+		export function registerDebugConfigurationProvider(debugType: string, provider: DebugConfigurationProvider, scope?: DebugConfigurationProviderScope): Disposable;
+	}
+
+	// deprecated debug API
 
 	export interface DebugConfigurationProvider {
 		/**
@@ -828,21 +861,6 @@ declare module 'vscode' {
 
 	//#endregion
 
-	//#region Joao: SCM Input Box
-
-	/**
-	 * Represents the input box in the Source Control viewlet.
-	 */
-	export interface SourceControlInputBox {
-
-		/**
-		 * Controls whether the input box is visible (default is `true`).
-		 */
-		visible: boolean;
-	}
-
-	//#endregion
-
 	//#region Terminal data write event https://github.com/microsoft/vscode/issues/78502
 
 	export interface TerminalDataWriteEvent {
@@ -897,6 +915,37 @@ declare module 'vscode' {
 		 * created.
 		 */
 		readonly dimensions: TerminalDimensions | undefined;
+	}
+
+	//#endregion
+
+
+
+	//#region Terminal link handlers https://github.com/microsoft/vscode/issues/91606
+
+	export namespace window {
+		/**
+		 * Register a [TerminalLinkHandler](#TerminalLinkHandler) that can be used to intercept and
+		 * handle links that are activated within terminals.
+		 * @param handler The link handler being registered.
+		 * @return A disposable that unregisters the link handler.
+		 */
+		export function registerTerminalLinkHandler(handler: TerminalLinkHandler): Disposable;
+	}
+
+	/**
+	 * Describes how to handle terminal links.
+	 */
+	export interface TerminalLinkHandler {
+		/**
+		 * Handles a link that is activated within the terminal.
+		 *
+		 * @param terminal The terminal the link was activated on.
+		 * @param link The text of the link activated.
+		 * @return Whether the link was handled, if the link was handled this link will not be
+		 * considered by any other extension or by the default built-in link handler.
+		 */
+		handleLink(terminal: Terminal, link: string): ProviderResult<boolean>;
 	}
 
 	//#endregion
@@ -1191,6 +1240,8 @@ declare module 'vscode' {
 
 	/**
 	 * Event triggered by extensions to signal to VS Code that an edit has occurred on an [`EditableCustomDocument`](#EditableCustomDocument).
+	 *
+	 * @see [`EditableCustomDocument.onDidChange`](#EditableCustomDocument.onDidChange).
 	 */
 	interface CustomDocumentEditEvent {
 		/**
@@ -1213,6 +1264,16 @@ declare module 'vscode' {
 		 * This is shown in the UI to users.
 		 */
 		readonly label?: string;
+	}
+
+	/**
+	 * Event triggered by extensions to signal to VS Code that the content of a [`EditableCustomDocument`](#EditableCustomDocument)
+	 * has changed.
+	 *
+	 * @see [`EditableCustomDocument.onDidChange`](#EditableCustomDocument.onDidChange).
+	 */
+	interface CustomDocumentContentChangeEvent {
+		// marker interface
 	}
 
 	/**
@@ -1242,6 +1303,29 @@ declare module 'vscode' {
 	 * document is also how custom editors notify VS Code that an edit has taken place.
 	 */
 	interface EditableCustomDocument extends CustomDocument {
+
+		/**
+		 * Signal that an edit has occurred inside a custom editor.
+		 *
+		 * This event must be fired by your extension whenever an edit happens in a custom editor. An edit can be
+		 * anything from changing some text, to cropping an image, to reordering a list. Your extension is free to
+		 * define what an edit is and what data is stored on each edit.
+		 *
+		 * Firing `onDidChange` causes VS Code to mark the editors as being dirty. This is cleared when the user either
+		 * saves or reverts the file.
+		 *
+		 * Editors that support undo/redo must fire a `CustomDocumentEditEvent` whenever an edit happens. This allows
+		 * users to undo and redo the edit using VS Code's standard VS Code keyboard shortcuts. VS Code will also mark
+		 * the editor as no longer being dirty if the user undoes all edits to the last saved state.
+		 *
+		 * Editors that support editing but cannot use VS Code's standard undo/redo mechanism must fire a `CustomDocumentContentChangeEvent`.
+		 * The only way for a user to clear the dirty state of an editor that does not support undo/redo is to either
+		 * `save` or `revert` the file.
+		 *
+		 * An editor should only ever fire `CustomDocumentEditEvent` events, or only ever fire `CustomDocumentContentChangeEvent` events.
+		 */
+		readonly onDidChange: Event<CustomDocumentEditEvent> | Event<CustomDocumentContentChangeEvent>;
+
 		/**
 		 * Save the resource for a custom editor.
 		 *
@@ -1266,24 +1350,12 @@ declare module 'vscode' {
 		 * To implement `saveAs`, the implementer must persist the custom editor to `targetResource`. The
 		 * existing editor will remain open after `saveAs` completes.
 		 *
-		 * @param targetResource Location to save to.
+		 * @param uri Location to save to.
 		 * @param cancellation Token that signals the save is no longer required.
 		 *
 		 * @return Thenable signaling that saving has completed.
 		 */
-		saveAs(targetResource: Uri, cancellation: CancellationToken): Thenable<void>;
-
-		/**
-		 * Signal that an edit has occurred inside a custom editor.
-		 *
-		 * This event must be fired by your extension whenever an edit happens in a custom editor. An edit can be
-		 * anything from changing some text, to cropping an image, to reordering a list. Your extension is free to
-		 * define what an edit is and what data is stored on each edit.
-		 *
-		 * Firing this will cause VS Code to mark the editors as being dirty. This also allows the user to then undo and
-		 * redo the edit in the custom editor.
-		 */
-		readonly onDidEdit: Event<CustomDocumentEditEvent>;
+		saveAs(uri: Uri, cancellation: CancellationToken): Thenable<void>;
 
 		/**
 		 * Revert a custom editor to its last saved state.
@@ -1394,6 +1466,19 @@ declare module 'vscode' {
 			provider: CustomEditorProvider,
 			options?: {
 				readonly webviewOptions?: WebviewPanelOptions;
+
+				/**
+				 * Indicates that the provider allows multiple editor instances to be open at the same time for
+				 * the same resource.
+				 *
+				 * If not set, VS Code only allows one editor instance to be open at a time for each resource. If the
+				 * user tries to open a second editor instance for the resource, the first one is instead moved to where
+				 * the second one was to be opened.
+				 *
+				 * When set, users can split and create copies of the custom editor. The custom editor must make sure it
+				 * can properly synchronize the states of all editor instances for a resource so that they are consistent.
+				 */
+				readonly supportsMultipleEditorsPerResource?: boolean;
 			}
 		): Disposable;
 	}
@@ -1507,10 +1592,10 @@ declare module 'vscode' {
 	export type CellOutput = CellStreamOutput | CellErrorOutput | CellDisplayOutput;
 
 	export enum NotebookCellRunState {
-		Running,
-		Idle,
-		Success,
-		Error
+		Running = 1,
+		Idle = 2,
+		Success = 3,
+		Error = 4
 	}
 
 	export interface NotebookCellMetadata {
@@ -1544,6 +1629,8 @@ declare module 'vscode' {
 	export interface NotebookCell {
 		readonly uri: Uri;
 		readonly cellKind: CellKind;
+		readonly document: TextDocument;
+		// API remove `source` or doc it as shorthand for document.getText()
 		readonly source: string;
 		language: string;
 		outputs: CellOutput[];
@@ -1586,13 +1673,34 @@ declare module 'vscode' {
 		metadata: NotebookDocumentMetadata;
 	}
 
+	export interface NotebookConcatTextDocument {
+		isClosed: boolean;
+		dispose(): void;
+		onDidChange: Event<void>;
+		version: number;
+		getText(): string;
+		getText(range: Range): string;
+		offsetAt(position: Position): number;
+		positionAt(offset: number): Position;
+		locationAt(positionOrRange: Position | Range): Location;
+		positionAt(location: Location): Position;
+	}
+
 	export interface NotebookEditorCellEdit {
 		insert(index: number, content: string | string[], language: string, type: CellKind, outputs: CellOutput[], metadata: NotebookCellMetadata | undefined): void;
 		delete(index: number): void;
 	}
 
 	export interface NotebookEditor {
+		/**
+		 * The document associated with this notebook editor.
+		 */
 		readonly document: NotebookDocument;
+
+		/**
+		 * The primary selected cell on this notebook editor.
+		 */
+		readonly selection?: NotebookCell;
 		viewColumn?: ViewColumn;
 		/**
 		 * Fired when the output hosting webview posts a message.
@@ -1652,50 +1760,24 @@ declare module 'vscode' {
 
 		export function registerNotebookOutputRenderer(type: string, outputSelector: NotebookOutputSelector, renderer: NotebookOutputRenderer): Disposable;
 
+		// remove activeNotebookDocument, now that there is activeNotebookEditor.document
 		export let activeNotebookDocument: NotebookDocument | undefined;
 
-		// export const onDidChangeNotebookDocument: Event<NotebookDocumentChangeEvent>;
+		export let activeNotebookEditor: NotebookEditor | undefined;
+
+		export const onDidChangeNotebookDocument: Event<NotebookDocumentChangeEvent>;
+
+		/**
+		 * Create a document that is the concatenation of all  notebook cells. By default all code-cells are included
+		 * but a selector can be provided to narrow to down the set of cells.
+		 *
+		 * @param notebook
+		 * @param selector
+		 */
+		export function createConcatTextDocument(notebook: NotebookDocument, selector?: DocumentSelector): NotebookConcatTextDocument;
 	}
 
 	//#endregion
-
-	//#region color theme access
-
-	/**
-	 * Represents a color theme kind.
-	 */
-	export enum ColorThemeKind {
-		Light = 1,
-		Dark = 2,
-		HighContrast = 3
-	}
-
-	/**
-	 * Represents a color theme.
-	 */
-	export interface ColorTheme {
-
-		/**
-		 * The kind of this color theme: light, dark or high contrast.
-		 */
-		readonly kind: ColorThemeKind;
-	}
-
-	export namespace window {
-		/**
-		 * The currently active color theme as configured in the settings. The active
-		 * theme can be changed via the `workbench.colorTheme` setting.
-		 */
-		export let activeColorTheme: ColorTheme;
-
-		/**
-		 * An [event](#Event) which fires when the active theme changes or one of it's colors chnage.
-		 */
-		export const onDidChangeActiveColorTheme: Event<ColorTheme>;
-	}
-
-	//#endregion
-
 
 	//#region https://github.com/microsoft/vscode/issues/39441
 
@@ -1935,68 +2017,6 @@ declare module 'vscode' {
 		 * systems do not present title on save dialogs.
 		 */
 		title?: string;
-	}
-
-	//#endregion
-
-	//#region https://github.com/microsoft/vscode/issues/90208
-
-	export interface ExtensionContext {
-		/**
-		 * @deprecated THIS API PROPOSAL WILL BE DROPPED
-		 */
-		asExtensionUri(relativePath: string): Uri;
-
-		/**
-		 * The uri of the directory containing the extension.
-		 */
-		readonly extensionUri: Uri;
-	}
-
-	export interface Extension<T> {
-		/**
-		 * @deprecated THIS API PROPOSAL WILL BE DROPPED
-		 */
-		asExtensionUri(relativePath: string): Uri;
-
-		/**
-		 * The uri of the directory containing the extension.
-		 */
-		readonly extensionUri: Uri;
-	}
-
-	export namespace Uri {
-
-		/**
-		 * Create a new uri which path is the result of joining
-		 * the path of the base uri with the provided path segments.
-		 *
-		 * - Note 1: `joinPath` only affects the path component
-		 * and all other components (scheme, authority, query, and fragment) are
-		 * left as they are.
-		 * - Note 2: The base uri must have a path; an error is thrown otherwise.
-		 *
-		 * The path segments are normalized in the following ways:
-		 * - sequences of path separators (`/` or `\`) are replaced with a single separator
-		 * - for `file`-uris on windows, the backslash-character (`\`) is considered a path-separator
-		 * - the `..`-segment denotes the parent segment, the `.` denotes the current segement
-		 * - paths have a root which always remains, for instance on windows drive-letters are roots
-		 * so that is true: `joinPath(Uri.file('file:///c:/root'), '../../other').fsPath === 'c:/other'`
-		 *
-		 * @param base An uri. Must have a path.
-		 * @param pathSegments One more more path fragments
-		 * @returns A new uri which path is joined with the given fragments
-		 */
-		export function joinPath(base: Uri, ...pathSegments: string[]): Uri;
-	}
-
-	//#endregion
-
-	//#region https://github.com/microsoft/vscode/issues/91541
-
-	export enum CompletionItemKind {
-		User = 25,
-		Issue = 26,
 	}
 
 	//#endregion

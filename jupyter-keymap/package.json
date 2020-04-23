@@ -9,11 +9,7 @@
 	"categories": [
 		"Keymaps"
 	],
-	"activationEvents": [
-		"*"
-	],
 	"extensionKind": "ui",
-	"main": "./out/extension.js",
 	"contributes": {
 		"keybindings": [
 			{
