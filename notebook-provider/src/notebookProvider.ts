@@ -215,7 +215,7 @@ export class JupyterNotebook {
 					0,
 					raw_cell.source ? raw_cell.source.join('') : '',
 					this.notebookJSON?.metadata?.language_info?.name || 'python',
-					raw_cell.cell_type === 'code' ? vscode.CellKind.Code :vscode.CellKind.Markdown,
+					raw_cell.cell_type === 'code' ? vscode.CellKind.Code : vscode.CellKind.Markdown,
 					outputs,
 					metadata
 				);
@@ -317,7 +317,7 @@ async function timeFn(fn: () => Promise<void>): Promise<number> {
 	return Date.now() - startTime;
 }
 
-function formatDuration(duration: number): string {
+function formatDuration(_duration: number): string {
 	// const seconds = Math.floor(duration / 1000);
 	// actual: ${String(duration - seconds).charAt(0)}
 
