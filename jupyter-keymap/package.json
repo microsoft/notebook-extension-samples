@@ -18,7 +18,7 @@
 				"linux": "F",
 				"key": "F",
 				"when": "notebookEditorFocused && !inputFocus",
-				"command": "workbench.action.notebook.find"
+				"command": "notebook.find"
 			},
 			{
 				"mac": "K",
@@ -42,7 +42,7 @@
 				"linux": "A",
 				"key": "A",
 				"when": "notebookEditorFocused && !inputFocus",
-				"command": "workbench.notebook.code.insertCellAbove"
+				"command": "notebook.cell.insertCodeCellAbove"
 			},
 			{
 				"mac": "B",
@@ -50,7 +50,7 @@
 				"linux": "B",
 				"key": "B",
 				"when": "notebookEditorFocused && !inputFocus",
-				"command": "workbench.notebook.code.insertCellBelow"
+				"command": "notebook.cell.insertCodeCellBelow"
 			},
 			{
 				"mac": "D D",
@@ -58,7 +58,7 @@
 				"linux": "D D",
 				"key": "D D",
 				"when": "notebookEditorFocused && !inputFocus",
-				"command": "workbench.notebook.cell.delete"
+				"command": "notebook.cell.delete"
 			},
 			{
 				"mac": "Z",
@@ -66,7 +66,7 @@
 				"linux": "Z",
 				"key": "Z",
 				"when": "notebookEditorFocused && !inputFocus",
-				"command": "workbench.action.notebook.undo"
+				"command": "notebook.undo"
 			},
 			{
 				"mac": "ctrl+m",
@@ -74,7 +74,7 @@
 				"linux": "ctrl+m",
 				"key": "ctrl+m",
 				"when": "notebookEditorFocused && inputFocus",
-				"command": "workbench.action.quitNotebookEdit"
+				"command": "notebook.cell.quitEdit"
 			},
 			{
 				"mac": "cmd+d",
