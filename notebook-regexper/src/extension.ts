@@ -170,8 +170,8 @@ interface RawNotebookCell {
 
 class RegexpProvider implements vscode.NotebookContentProvider {
 
-	onDidChange: vscode.Event<void> = new vscode.EventEmitter<void>().event;
-	async open(uri: vscode.Uri): Promise<vscode.NotebookData> {
+	onDidChangeNotebook: vscode.Event<void> = new vscode.EventEmitter<void>().event;
+	async openNotebook(uri: vscode.Uri): Promise<vscode.NotebookData> {
 		const contents = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8')
 
 		let cells: vscode.NotebookCellData[] = [];
@@ -217,11 +217,11 @@ class RegexpProvider implements vscode.NotebookContentProvider {
 		};
 	}
 
-	save(document: vscode.NotebookDocument, _cancellation: vscode.CancellationToken): Thenable<void> {
+	saveNotebook(document: vscode.NotebookDocument, _cancellation: vscode.CancellationToken): Promise<void> {
 		return this._save(document, document.uri);
 	}
 
-	saveAs(targetResource: vscode.Uri, document: vscode.NotebookDocument, _cancellation: vscode.CancellationToken): Thenable<void> {
+	saveNotebookAs(targetResource: vscode.Uri, document: vscode.NotebookDocument, _cancellation: vscode.CancellationToken): Promise<void> {
 		return this._save(document, targetResource);
 	}
 

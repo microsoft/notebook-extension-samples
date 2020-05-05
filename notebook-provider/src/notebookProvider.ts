@@ -331,15 +331,15 @@ function formatDuration(_duration: number): string {
 const DELAY_EXECUTION = true;
 
 export class NotebookProvider implements vscode.NotebookContentProvider {
-	private _onDidChangeNotebook = new vscode.EventEmitter<{ resource: vscode.Uri; notebook: vscode.NotebookDocument; }>();
-	onDidChangeNotebook: vscode.Event<{ resource: vscode.Uri; notebook: vscode.NotebookDocument; }> = this._onDidChangeNotebook.event;
+	private _onDidChangeNotebook = new vscode.EventEmitter<void>();
+	onDidChangeNotebook: vscode.Event<void> = this._onDidChangeNotebook.event;
 	private _notebooks: Map<string, JupyterNotebook> = new Map();
 	onDidChange: vscode.Event<void> = new vscode.EventEmitter<void>().event;
 
 	constructor(private _extensionPath: string, private fillOutputs: boolean) {
 	}
 
-	async open(uri: vscode.Uri): Promise<vscode.NotebookData> {
+	async openNotebook(uri: vscode.Uri): Promise<vscode.NotebookData> {
 		try {
 			let content = await vscode.workspace.fs.readFile(uri);
 			let json: any = {};
@@ -364,11 +364,11 @@ export class NotebookProvider implements vscode.NotebookContentProvider {
 
 
 
-	async save(document: vscode.NotebookDocument, token: vscode.CancellationToken): Promise<void> {
+	async saveNotebook(document: vscode.NotebookDocument, token: vscode.CancellationToken): Promise<void> {
 		return this._save(document, document.uri, token);
 	}
 
-	saveAs(targetResource: vscode.Uri, document: vscode.NotebookDocument, token: vscode.CancellationToken): Thenable<void> {
+	saveNotebookAs(targetResource: vscode.Uri, document: vscode.NotebookDocument, token: vscode.CancellationToken): Promise<void> {
 		return this._save(document, targetResource, token);
 	}
 
