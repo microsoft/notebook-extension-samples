@@ -153,23 +153,26 @@ export class JupyterNotebook {
 
 	constructor(
 		private _extensionPath: string,
-		private editor: vscode.NotebookEditor,
 		public notebookJSON: any,
 		private fillOutputs: boolean
 	) {
-		editor.document.languages = ['python'];
-		editor.document.displayOrder = this.displayOrders;
-		editor.document.metadata = {
-			editable: notebookJSON?.metadata?.editable === undefined ? true : notebookJSON?.metadata?.editable,
-			cellEditable: notebookJSON?.metadata?.cellEditable === undefined ? true : notebookJSON?.metadata?.cellEditable,
-			cellRunnable: notebookJSON?.metadata?.cellRunnable === undefined ? true : notebookJSON?.metadata?.cellRunnable,
-			hasExecutionOrder: true
-		};
+		// editor.document.languages = ['python'];
+		// editor.document.displayOrder = this.displayOrders;
+		// editor.document.metadata = {
+		// };
 	}
 
-	async resolve() {
-		await this.editor.edit((editBuilder => {
-			this.notebookJSON.cells.forEach(((raw_cell: RawCell) => {
+	resolve(): vscode.NotebookData {
+		return {
+			languages: ['python'],
+			metadata: {
+				editable: this.notebookJSON?.metadata?.editable === undefined ? true : this.notebookJSON?.metadata?.editable,
+				cellEditable: this.notebookJSON?.metadata?.cellEditable === undefined ? true : this.notebookJSON?.metadata?.cellEditable,
+				cellRunnable: this.notebookJSON?.metadata?.cellRunnable === undefined ? true : this.notebookJSON?.metadata?.cellRunnable,
+				hasExecutionOrder: true,
+				displayOrder: this.displayOrders,
+			},
+			cells: this.notebookJSON.cells.map(((raw_cell: RawCell) => {
 				let outputs: vscode.CellOutput[] = [];
 				if (this.fillOutputs) {
 					outputs = raw_cell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
@@ -199,7 +202,6 @@ export class JupyterNotebook {
 					}
 				}
 
-
 				const executionOrder = typeof raw_cell.execution_count === 'number' ? raw_cell.execution_count : undefined;
 				if (typeof executionOrder === 'number') {
 					if (executionOrder >= this.nextExecutionOrder) {
@@ -211,16 +213,15 @@ export class JupyterNotebook {
 				const runnable = raw_cell.metadata?.runnable;
 				const metadata = { editable: cellEditable, runnable: runnable, executionOrder };
 
-				editBuilder.insert(
-					0,
-					raw_cell.source ? raw_cell.source.join('') : '',
-					this.notebookJSON?.metadata?.language_info?.name || 'python',
-					raw_cell.cell_type === 'code' ? vscode.CellKind.Code : vscode.CellKind.Markdown,
-					outputs,
+				return {
+					source: raw_cell.source ? raw_cell.source.join('') : '',
+					language: this.notebookJSON?.metadata?.language_info?.name || 'python',
+					cellKind: raw_cell.cell_type === 'code' ? vscode.CellKind.Code : vscode.CellKind.Markdown,
+					outputs: outputs,
 					metadata
-				);
-			}));
-		}));
+				};
+			}))
+		}
 	}
 
 	private getNextExecutionOrder(): number {
@@ -329,34 +330,18 @@ function formatDuration(_duration: number): string {
 // For test
 const DELAY_EXECUTION = true;
 
-export class NotebookProvider implements vscode.NotebookProvider {
+export class NotebookProvider implements vscode.NotebookContentProvider {
 	private _onDidChangeNotebook = new vscode.EventEmitter<{ resource: vscode.Uri; notebook: vscode.NotebookDocument; }>();
 	onDidChangeNotebook: vscode.Event<{ resource: vscode.Uri; notebook: vscode.NotebookDocument; }> = this._onDidChangeNotebook.event;
 	private _notebooks: Map<string, JupyterNotebook> = new Map();
+	onDidChange: vscode.Event<void> = new vscode.EventEmitter<void>().event;
 
 	constructor(private _extensionPath: string, private fillOutputs: boolean) {
 	}
-	// async latexRenderer(value: string): Promise<vscode.MarkdownString> {
-	// 	return new Promise((resolve, reject) => {
-	// 		mjAPI.typeset({
-	// 			math: value,
-	// 			format: 'inline-TeX', // or "inline-TeX", "MathML"
-	// 			svg: true
-	// 		}, function (data: any) {
-	// 			if (!data.errors) {
-	// 				var encodedData = Buffer.from(data.svg).toString('base64');
-	// 				resolve(new vscode.MarkdownString(`![value](data:image/svg+xml;base64,${encodedData})`));
-	// 			} else {
-	// 				reject();
-	// 			}
-	// 		});
-	// 	});
-	// }
 
-	async resolveNotebook(editor: vscode.NotebookEditor): Promise<void> {
-
+	async open(uri: vscode.Uri): Promise<vscode.NotebookData> {
 		try {
-			let content = await vscode.workspace.fs.readFile(editor.document.uri);
+			let content = await vscode.workspace.fs.readFile(uri);
 			let json: any = {};
 			try {
 				json = JSON.parse(content.toString());
@@ -370,51 +355,24 @@ export class NotebookProvider implements vscode.NotebookProvider {
 					}]
 				};
 			}
-			let jupyterNotebook = new JupyterNotebook(this._extensionPath, editor, json, this.fillOutputs);
-			await jupyterNotebook.resolve();
-			this._notebooks.set(editor.document.uri.toString(), jupyterNotebook);
+			let jupyterNotebook = new JupyterNotebook(this._extensionPath, json, this.fillOutputs);
+			return jupyterNotebook.resolve();
 		} catch {
-
+			throw new Error('Fail to load the document');
 		}
 	}
 
-	async executeCell(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined, token: vscode.CancellationToken): Promise<void> {
-		if (cell) {
-			cell.metadata.runState = vscode.NotebookCellRunState.Running;
-		}
 
-		const duration = await timeFn(async () => {
-			if (DELAY_EXECUTION) {
-				return this._executeCellDelayed(document, cell, token);
-			}
 
-			const jupyterNotebook = this._notebooks.get(document.uri.toString());
-			if (jupyterNotebook) {
-				return jupyterNotebook.execute(document, cell);
-			}
-		});
-
-		if (cell) {
-			cell.metadata.statusMessage = formatDuration(duration);
-			cell.metadata.runState = vscode.NotebookCellRunState.Success;
-		}
+	async save(document: vscode.NotebookDocument, token: vscode.CancellationToken): Promise<void> {
+		return this._save(document, document.uri, token);
 	}
 
-	private async _executeCellDelayed(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined, token: vscode.CancellationToken): Promise<void> {
-		let jupyterNotebook = this._notebooks.get(document.uri.toString());
-		return new Promise(async resolve => {
-			token.onCancellationRequested(() => {
-				resolve();
-			});
-
-			await new Promise(resolve => setTimeout(resolve, 2000));
-			if (jupyterNotebook && !token.isCancellationRequested) {
-				return jupyterNotebook.execute(document, cell).then(resolve);
-			}
-		});
+	saveAs(targetResource: vscode.Uri, document: vscode.NotebookDocument, token: vscode.CancellationToken): Thenable<void> {
+		return this._save(document, targetResource, token);
 	}
 
-	async save(document: vscode.NotebookDocument): Promise<boolean> {
+	async _save(document: vscode.NotebookDocument, targetResource: vscode.Uri, _token: vscode.CancellationToken): Promise<void> {
 		let cells: RawCell[] = [];
 
 		for (let i = 0; i < document.cells.length; i++) {
@@ -457,12 +415,48 @@ export class NotebookProvider implements vscode.NotebookProvider {
 		if (raw) {
 			raw.notebookJSON.cells = cells;
 			let content = JSON.stringify(raw.notebookJSON, null, 4);
-			await vscode.workspace.fs.writeFile(document.uri, new TextEncoder().encode(content));
+			await vscode.workspace.fs.writeFile(targetResource, new TextEncoder().encode(content));
 		} else {
 			let content = JSON.stringify({ cells: cells }, null, 4);
-			await vscode.workspace.fs.writeFile(document.uri, new TextEncoder().encode(content));
+			await vscode.workspace.fs.writeFile(targetResource, new TextEncoder().encode(content));
 		}
 
-		return true;
+		return;
+	}
+
+	async executeCell(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined, token: vscode.CancellationToken): Promise<void> {
+		if (cell) {
+			cell.metadata.runState = vscode.NotebookCellRunState.Running;
+		}
+
+		const duration = await timeFn(async () => {
+			if (DELAY_EXECUTION) {
+				return this._executeCellDelayed(document, cell, token);
+			}
+
+			const jupyterNotebook = this._notebooks.get(document.uri.toString());
+			if (jupyterNotebook) {
+				return jupyterNotebook.execute(document, cell);
+			}
+		});
+
+		if (cell) {
+			cell.metadata.statusMessage = formatDuration(duration);
+			cell.metadata.runState = vscode.NotebookCellRunState.Success;
+		}
+	}
+
+	private async _executeCellDelayed(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined, token: vscode.CancellationToken): Promise<void> {
+		let jupyterNotebook = this._notebooks.get(document.uri.toString());
+		return new Promise(async resolve => {
+			token.onCancellationRequested(() => {
+				resolve();
+			});
+
+			await new Promise(resolve => setTimeout(resolve, 2000));
+			if (jupyterNotebook && !token.isCancellationRequested) {
+				return jupyterNotebook.execute(document, cell).then(resolve);
+			}
+		});
 	}
 }

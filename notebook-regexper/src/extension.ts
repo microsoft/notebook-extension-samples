@@ -12,7 +12,7 @@ import * as parser from '../regexper/parser/javascript/parser';
 export function activate(context: vscode.ExtensionContext) {
 
 	// notebook stuff
-	context.subscriptions.push(vscode.notebook.registerNotebookProvider('regexp', new RegexpProvider()));
+	context.subscriptions.push(vscode.notebook.registerNotebookContentProvider('regexp', new RegexpProvider()));
 	context.subscriptions.push(vscode.notebook.registerNotebookOutputRenderer(
 		'regexp',
 		{
@@ -168,40 +168,61 @@ interface RawNotebookCell {
 	kind: vscode.CellKind;
 }
 
-class RegexpProvider implements vscode.NotebookProvider {
+class RegexpProvider implements vscode.NotebookContentProvider {
 
-	async resolveNotebook(editor: vscode.NotebookEditor): Promise<void> {
+	onDidChange: vscode.Event<void> = new vscode.EventEmitter<void>().event;
+	async open(uri: vscode.Uri): Promise<vscode.NotebookData> {
+		const contents = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8')
 
-		// confusing and hard to discover... better to add during register or return from here?
-		editor.document.languages = ['regexp'];
+		let cells: vscode.NotebookCellData[] = [];
 
-		editor.document.metadata = { editable: true, cellEditable: true, cellRunnable: true, hasExecutionOrder: false };
-
-		const contents = Buffer.from(await vscode.workspace.fs.readFile(editor.document.uri)).toString('utf8')
-		let cells: vscode.NotebookCell[] = [];
-
-		await editor.edit(editBuilder => {
-			try {
-				const cellData = <RawNotebookCell[]>JSON.parse(contents);
-				for (let data of cellData) {
-					editBuilder.insert(0, data.value, data.language, data.kind, [], { editable: true, runnable: true });
-				}
-
-			} catch (err) {
-				console.error(contents);
-				console.error(err);
+		try {
+			const cellData = <RawNotebookCell[]>JSON.parse(contents);
+			for (let data of cellData) {
+				cells.push({
+					source: data.value,
+					language: data.language,
+					cellKind: data.kind,
+					outputs: [],
+					metadata: { editable: true, runnable: true }
+				});
 			}
 
-			if (cells.length === 0) {
-				const sample = '/Hello (World|Welt)!/';
-				editBuilder.insert(0, sample, 'regexp', vscode.CellKind.Code, [{
+		} catch (err) {
+			console.error(contents);
+			console.error(err);
+		}
+
+		if (cells.length === 0) {
+			const sample = '/Hello (World|Welt)!/';
+			cells.push({
+				source: sample,
+				language: 'regexp',
+				cellKind: vscode.CellKind.Code,
+				outputs: [{
 					outputKind: vscode.CellOutputKind.Rich,
 					data: {
 						'x-application/regexp': sample,
 					}
-				}], { editable: true, runnable: true });
-			}
-		});
+				}],
+				metadata: { editable: true, runnable: true }
+			});
+		}
+
+
+		return {
+			languages: ['regexp'],
+			metadata: { editable: true, cellEditable: true, cellRunnable: true, hasExecutionOrder: false },
+			cells
+		};
+	}
+
+	save(document: vscode.NotebookDocument, _cancellation: vscode.CancellationToken): Thenable<void> {
+		return this._save(document, document.uri);
+	}
+
+	saveAs(targetResource: vscode.Uri, document: vscode.NotebookDocument, _cancellation: vscode.CancellationToken): Thenable<void> {
+		return this._save(document, targetResource);
 	}
 
 	async executeCell(_document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined): Promise<void> {
@@ -234,7 +255,7 @@ class RegexpProvider implements vscode.NotebookProvider {
 		}
 	}
 
-	async save(document: vscode.NotebookDocument): Promise<boolean> {
+	async _save(document: vscode.NotebookDocument, targetResource: vscode.Uri): Promise<void> {
 		let contents: RawNotebookCell[] = [];
 		for (let cell of document.cells) {
 			contents.push({
@@ -244,8 +265,7 @@ class RegexpProvider implements vscode.NotebookProvider {
 			});
 		}
 		// API - allow to throw FS errors?
-		await vscode.workspace.fs.writeFile(document.uri, Buffer.from(JSON.stringify(contents)));
-		return true;
+		await vscode.workspace.fs.writeFile(targetResource, Buffer.from(JSON.stringify(contents)));
 	}
 }
 

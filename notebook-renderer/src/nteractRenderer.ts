@@ -17,6 +17,7 @@ export class NteractRenderer implements vscode.NotebookOutputRenderer {
 		private _extensionPath: string
 	) {
 		this._preloads.push(vscode.Uri.file(path.join(this._extensionPath, 'nteract', 'nteract.js')));
+		this._preloads.push(vscode.Uri.parse('http://127.0.0.1:8080/monaco-editor/metadata.js'));
 	}
 
 	// @ts-ignore
