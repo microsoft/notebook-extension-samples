@@ -37,6 +37,16 @@
         "command": "notebook.cell.moveUp",
         "title": "Notebook: Move Cell Up",
         "icon": "$(arrow-up)"
+      },
+      {
+        "command": "notebook.cell.changeToCode",
+        "title": "Notebook: Change Cell to Code",
+        "icon": "$(code)"
+      },
+      {
+        "command": "notebook.cell.changeToMarkdown",
+        "title": "Notebook: Change Cell to Markdown",
+        "icon": "$(markdown)"
       }
     ],
     "notebookProvider": [
@@ -81,19 +91,39 @@
           "group": "inline@1"
         },
         {
-          "command": "notebook.cell.moveUp",
-          "when": "notebookViewType == jupyter",
-          "group": "inline@2"
-        },
-        {
           "command": "notebook.cell.moveDown",
           "when": "notebookViewType == jupyterTest",
           "group": "inline@1"
         },
         {
           "command": "notebook.cell.moveUp",
+          "when": "notebookViewType == jupyter",
+          "group": "inline@2"
+        },
+        {
+          "command": "notebook.cell.moveUp",
           "when": "notebookViewType == jupyterTest",
           "group": "inline@2"
+        },
+        {
+          "command": "notebook.cell.changeToMarkdown",
+          "when": "notebookViewType == jupyter && notebookCellType == code",
+          "group": "inline@3"
+        },
+        {
+          "command": "notebook.cell.changeToMarkdown",
+          "when": "notebookViewType == jupyterTest && notebookCellType == code",
+          "group": "inline@3"
+        },
+        {
+          "command": "notebook.cell.changeToCode",
+          "when": "notebookViewType == jupyter && notebookCellType == markdown",
+          "group": "inline@3"
+        },
+        {
+          "command": "notebook.cell.changeToCode",
+          "when": "notebookViewType == jupyterTest && notebookCellType == markdown",
+          "group": "inline@3"
         }
       ]
     }
