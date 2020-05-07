@@ -356,6 +356,7 @@ export class NotebookProvider implements vscode.NotebookContentProvider {
 				};
 			}
 			let jupyterNotebook = new JupyterNotebook(this._extensionPath, json, this.fillOutputs);
+			this._notebooks.set(uri.toString(), jupyterNotebook);
 			return jupyterNotebook.resolve();
 		} catch {
 			throw new Error('Fail to load the document');
