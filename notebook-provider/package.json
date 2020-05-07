@@ -27,6 +27,16 @@
       {
         "command": "notebook.saveToMarkdown",
         "title": "Notebook: Save to Markdown"
+      },
+      {
+        "command": "notebook.cell.moveDown",
+        "title": "Notebook: Move Cell Down",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "notebook.cell.moveUp",
+        "title": "Notebook: Move Cell Up",
+        "icon": "$(arrow-up)"
       }
     ],
     "notebookProvider": [
@@ -62,7 +72,31 @@
           "application/vnd.vega.v5+json"
         ]
       }
-    ]
+    ],
+    "menus": {
+      "notebook/cell/title": [
+        {
+          "command": "notebook.cell.moveDown",
+          "when": "notebookViewType == jupyter",
+          "group": "inline@1"
+        },
+        {
+          "command": "notebook.cell.moveUp",
+          "when": "notebookViewType == jupyter",
+          "group": "inline@2"
+        },
+        {
+          "command": "notebook.cell.moveDown",
+          "when": "notebookViewType == jupyterTest",
+          "group": "inline@1"
+        },
+        {
+          "command": "notebook.cell.moveUp",
+          "when": "notebookViewType == jupyterTest",
+          "group": "inline@2"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",
