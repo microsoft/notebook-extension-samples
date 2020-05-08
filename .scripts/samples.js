@@ -19,6 +19,10 @@ const samples = [
     {
         description: 'Notebook Regexper',
         path: 'notebook-regexper'
+    },
+    {
+        description: 'Notebook Markdown',
+        path: 'notebook-markdown'
     }
 ]
 
