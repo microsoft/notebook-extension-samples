@@ -318,15 +318,6 @@ async function timeFn(fn: () => Promise<void>): Promise<number> {
 	return Date.now() - startTime;
 }
 
-function formatDuration(_duration: number): string {
-	// const seconds = Math.floor(duration / 1000);
-	// actual: ${String(duration - seconds).charAt(0)}
-
-	const randomSeconds = Math.floor(Math.random() * 10);
-	const randomTenths = Math.floor(Math.random() * 10);
-	return `${randomSeconds}.${randomTenths}s`;
-}
-
 // For test
 const DELAY_EXECUTION = true;
 
@@ -427,6 +418,8 @@ export class NotebookProvider implements vscode.NotebookContentProvider {
 
 	async executeCell(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined, token: vscode.CancellationToken): Promise<void> {
 		if (cell) {
+			cell.metadata.statusMessage = 'Running';
+			cell.metadata.runStartTime = Date.now();
 			cell.metadata.runState = vscode.NotebookCellRunState.Running;
 		}
 
@@ -442,7 +435,8 @@ export class NotebookProvider implements vscode.NotebookContentProvider {
 		});
 
 		if (cell) {
-			cell.metadata.statusMessage = formatDuration(duration);
+			cell.metadata.lastRunDuration = duration;
+			cell.metadata.statusMessage = 'Success'
 			cell.metadata.runState = vscode.NotebookCellRunState.Success;
 		}
 	}
@@ -454,7 +448,7 @@ export class NotebookProvider implements vscode.NotebookContentProvider {
 				resolve();
 			});
 
-			await new Promise(resolve => setTimeout(resolve, 2000));
+			await new Promise(resolve => setTimeout(resolve, Math.random() * 2500));
 			if (jupyterNotebook && !token.isCancellationRequested) {
 				return jupyterNotebook.execute(document, cell).then(resolve);
 			}
