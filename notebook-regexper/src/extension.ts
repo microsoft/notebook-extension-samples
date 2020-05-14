@@ -170,7 +170,7 @@ interface RawNotebookCell {
 
 class RegexpProvider implements vscode.NotebookContentProvider {
 
-	onDidChangeNotebook: vscode.Event<void> = new vscode.EventEmitter<void>().event;
+	onDidChangeNotebook: vscode.Event<vscode.NotebookDocumentEditEvent> = new vscode.EventEmitter<vscode.NotebookDocumentEditEvent>().event;
 	async openNotebook(uri: vscode.Uri): Promise<vscode.NotebookData> {
 		const contents = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8')
 

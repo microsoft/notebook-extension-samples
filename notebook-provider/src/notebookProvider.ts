@@ -322,8 +322,8 @@ async function timeFn(fn: () => Promise<void>): Promise<number> {
 const DELAY_EXECUTION = true;
 
 export class NotebookProvider implements vscode.NotebookContentProvider {
-	private _onDidChangeNotebook = new vscode.EventEmitter<void>();
-	onDidChangeNotebook: vscode.Event<void> = this._onDidChangeNotebook.event;
+	private _onDidChangeNotebook = new vscode.EventEmitter<vscode.NotebookDocumentEditEvent>();
+	onDidChangeNotebook: vscode.Event<vscode.NotebookDocumentEditEvent> = this._onDidChangeNotebook.event;
 	private _notebooks: Map<string, JupyterNotebook> = new Map();
 	onDidChange: vscode.Event<void> = new vscode.EventEmitter<void>().event;
 
