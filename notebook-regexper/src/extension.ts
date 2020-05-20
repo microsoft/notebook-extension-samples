@@ -168,7 +168,8 @@ interface RawNotebookCell {
 	kind: vscode.CellKind;
 }
 
-class RegexpProvider implements vscode.NotebookContentProvider {
+class RegexpProvider implements vscode.NotebookContentProvider, vscode.NotebookKernel {
+	label: string = 'Regex';
 
 	onDidChangeNotebook: vscode.Event<vscode.NotebookDocumentEditEvent> = new vscode.EventEmitter<vscode.NotebookDocumentEditEvent>().event;
 	async openNotebook(uri: vscode.Uri): Promise<vscode.NotebookData> {
@@ -223,6 +224,12 @@ class RegexpProvider implements vscode.NotebookContentProvider {
 
 	saveNotebookAs(targetResource: vscode.Uri, document: vscode.NotebookDocument, _cancellation: vscode.CancellationToken): Promise<void> {
 		return this._save(document, targetResource);
+	}
+
+	async executeAllCells(document: vscode.NotebookDocument, _token: vscode.CancellationToken): Promise<void> {
+		for (let i = 0; i < document.cells.length; i++) {
+			await this.executeCell(document, document.cells[i]);
+		}
 	}
 
 	async executeCell(_document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined): Promise<void> {
