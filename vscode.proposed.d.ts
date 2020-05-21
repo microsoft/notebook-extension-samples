@@ -1912,6 +1912,11 @@ declare module 'vscode' {
 		// backup?(document: NotebookDocument, cancellation: CancellationToken): Thenable<CustomDocumentBackup>;
 
 		kernel?: NotebookKernel;
+
+		/**
+		 * Responsible for filling in outputs for the cell
+		 */
+		executeCell(document: NotebookDocument, cell: NotebookCell | undefined, token: CancellationToken): Promise<void>;
 	}
 
 	export interface NotebookKernel {
@@ -1948,8 +1953,9 @@ declare module 'vscode' {
 		export let activeNotebookDocument: NotebookDocument | undefined;
 
 		export let activeNotebookEditor: NotebookEditor | undefined;
-		export const onDidChangeActiveNotebookEditor: Event<NotebookEditor | undefined>;
+
 		export const onDidChangeNotebookCells: Event<NotebookCellsChangeEvent>;
+		export const onDidMoveNotebookCell: Event<NotebookCellMoveEvent>;
 		export const onDidChangeCellOutputs: Event<NotebookCellOutputsChangeEvent>;
 		export const onDidChangeCellLanguage: Event<NotebookCellLanguageChangeEvent>;
 		/**
