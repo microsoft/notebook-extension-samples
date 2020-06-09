@@ -243,7 +243,7 @@ class RegexpProvider implements vscode.NotebookContentProvider, vscode.NotebookK
 
 	private _setOutput(cell: vscode.NotebookCell): void {
 		if (cell.language === 'regexp') {
-			const value = cell.source;
+			const value = cell.document.getText();
 			if (isValid(value)) {
 				cell.outputs = [{
 					outputKind: vscode.CellOutputKind.Rich,
@@ -268,7 +268,7 @@ class RegexpProvider implements vscode.NotebookContentProvider, vscode.NotebookK
 			contents.push({
 				kind: cell.cellKind,
 				language: cell.language,
-				value: cell.source
+				value: cell.document.getText()
 			});
 		}
 		// API - allow to throw FS errors?
@@ -299,4 +299,3 @@ function parseRegExp(value: string, bucket: vscode.Diagnostic[]) {
 		}
 	}
 }
-

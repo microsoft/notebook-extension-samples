@@ -47,9 +47,9 @@ export function activate(context: vscode.ExtensionContext) {
 				let cell = document.cells[i];
 				let language = cell.language || '';
 				if (cell.cellKind === vscode.CellKind.Markdown) {
-					content += cell.source + '\n';
+					content += cell.document.getText() + '\n';
 				} else {
-					content += '```' + language + '\n' + cell.source + '```\n\n';
+					content += '```' + language + '\n' + cell.document.getText() + '```\n\n';
 				}
 			}
 
@@ -57,4 +57,3 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 }
-

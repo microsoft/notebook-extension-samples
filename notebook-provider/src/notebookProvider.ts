@@ -371,7 +371,7 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 		let cells: RawCell[] = [];
 
 		for (let i = 0; i < document.cells.length; i++) {
-			let lines = document.cells[i].source.split(/\r|\n|\r\n/g);
+			let lines = document.cells[i].document.getText().split(/\r|\n|\r\n/g);
 			let source = lines.map((value, index) => {
 				if (index !== lines.length - 1) {
 					return value + '\n';
