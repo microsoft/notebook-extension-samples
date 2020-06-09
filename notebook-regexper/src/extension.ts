@@ -213,7 +213,7 @@ class RegexpProvider implements vscode.NotebookContentProvider, vscode.NotebookK
 
 		return {
 			languages: ['regexp'],
-			metadata: { editable: true, cellEditable: true, cellRunnable: true, hasExecutionOrder: false },
+			metadata: { editable: true, cellEditable: true, cellRunnable: true },
 			cells
 		};
 	}

@@ -167,9 +167,9 @@ export class JupyterNotebook {
 			languages: ['python'],
 			metadata: {
 				editable: this.notebookJSON?.metadata?.editable === undefined ? true : this.notebookJSON?.metadata?.editable,
+				runnable: this.notebookJSON?.metadata?.runnable === undefined ? true : this.notebookJSON?.metadata?.runnable,
 				cellEditable: this.notebookJSON?.metadata?.cellEditable === undefined ? true : this.notebookJSON?.metadata?.cellEditable,
 				cellRunnable: this.notebookJSON?.metadata?.cellRunnable === undefined ? true : this.notebookJSON?.metadata?.cellRunnable,
-				hasExecutionOrder: true,
 				displayOrder: this.displayOrders,
 			},
 			cells: this.notebookJSON.cells.map(((raw_cell: RawCell) => {
