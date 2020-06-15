@@ -12,8 +12,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.notebook.registerNotebookOutputRenderer(
 		'nteract',
 		{
-			type: 'display_data',
-			subTypes: [
+			mimeTypes: [
 				'text/latex',
 				'text/markdown',
 				'application/json',

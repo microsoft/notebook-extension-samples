@@ -16,8 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.notebook.registerNotebookOutputRenderer(
 		'regexp',
 		{
-			type: 'display_data',
-			subTypes: [
+			mimeTypes: [
 				'x-application/regexp',
 			]
 		},
@@ -55,7 +54,8 @@ class RegexpRenderer implements vscode.NotebookOutputRenderer {
 			//todo@joh cannot be CSS
 		];
 	}
-	render(_document: vscode.NotebookDocument, output: vscode.CellOutput, _mimeType: string): string {
+	render(_document: vscode.NotebookDocument, request: vscode.NotebookRenderRequest): string {
+		const output = request.output;
 
 		if (output.outputKind !== vscode.CellOutputKind.Rich) {
 			// todo@typing hole
@@ -169,6 +169,7 @@ interface RawNotebookCell {
 }
 
 class RegexpProvider implements vscode.NotebookContentProvider, vscode.NotebookKernel {
+	kernel?: vscode.NotebookKernel | undefined;
 	label: string = 'Regex';
 
 	onDidChangeNotebook: vscode.Event<vscode.NotebookDocumentEditEvent> = new vscode.EventEmitter<vscode.NotebookDocumentEditEvent>().event;
@@ -260,6 +261,22 @@ class RegexpProvider implements vscode.NotebookContentProvider, vscode.NotebookK
 				}];
 			}
 		}
+	}
+
+	async revertNotebook(_document: vscode.NotebookDocument, _cancellation: vscode.CancellationToken): Promise<void> {
+		return;
+	}
+
+	async backupNotebook(document: vscode.NotebookDocument, context: vscode.NotebookDocumentBackupContext, _cancellation: vscode.CancellationToken): Promise<vscode.NotebookDocumentBackup> {
+		await this._save(document, context.destination);
+		const uri = document.uri;
+
+		return {
+			id: document.uri.toString(),
+			delete: () => {
+				vscode.workspace.fs.delete(uri);
+			}
+		};
 	}
 
 	async _save(document: vscode.NotebookDocument, targetResource: vscode.Uri): Promise<void> {

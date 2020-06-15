@@ -21,7 +21,9 @@ export class NteractRenderer implements vscode.NotebookOutputRenderer {
 	}
 
 	// @ts-ignore
-	render(document: vscode.NotebookDocument, output: vscode.CellOutput, mimeType: string): string {
+	render(document: vscode.NotebookDocument, request: vscode.NotebookRenderRequest): string {
+		const output = request.output;
+		const mimeType = request.mimeType;
 		let renderOutputs: string[] = [];
 		let data = (output as vscode.CellDisplayOutput).data;
 		let trimmedData: { [key: string]: any } = {};
