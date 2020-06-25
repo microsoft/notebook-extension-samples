@@ -333,9 +333,11 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 		this.kernel = this;
 	}
 
-	async openNotebook(uri: vscode.Uri): Promise<vscode.NotebookData> {
+	async openNotebook(uri: vscode.Uri, context: vscode.NotebookDocumentOpenContext): Promise<vscode.NotebookData> {
+		let actualUri = context.backupId ? vscode.Uri.parse(context.backupId) : uri;
+
 		try {
-			let content = await vscode.workspace.fs.readFile(uri);
+			let content = await vscode.workspace.fs.readFile(actualUri);
 			let json: any = {};
 			try {
 				json = JSON.parse(content.toString());
@@ -357,7 +359,9 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 		}
 	}
 
-
+	async resolveNotebook(_document: vscode.NotebookDocument, _webview: vscode.NotebookCommunication): Promise<void> {
+		return;
+	}
 
 	async saveNotebook(document: vscode.NotebookDocument, token: vscode.CancellationToken): Promise<void> {
 		return this._save(document, document.uri, token);
