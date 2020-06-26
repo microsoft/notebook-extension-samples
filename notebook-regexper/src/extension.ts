@@ -219,6 +219,11 @@ class RegexpProvider implements vscode.NotebookContentProvider, vscode.NotebookK
 		};
 	}
 
+
+	async resolveNotebook(_document: vscode.NotebookDocument, _webview: vscode.NotebookCommunication): Promise<void> {
+		return;
+	}
+
 	saveNotebook(document: vscode.NotebookDocument, _cancellation: vscode.CancellationToken): Promise<void> {
 		return this._save(document, document.uri);
 	}

@@ -472,12 +472,11 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 
 	async backupNotebook(document: vscode.NotebookDocument, context: vscode.NotebookDocumentBackupContext, cancellation: vscode.CancellationToken): Promise<vscode.NotebookDocumentBackup> {
 		await this._save(document, context.destination, cancellation);
-		const uri = document.uri;
 
 		return {
-			id: document.uri.toString(),
+			id: context.destination.toString(),
 			delete: () => {
-				vscode.workspace.fs.delete(uri);
+				vscode.workspace.fs.delete(context.destination);
 			}
 		};
 	}
