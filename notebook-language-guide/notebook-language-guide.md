@@ -71,43 +71,79 @@ In addition, there are events that fire when a notebook is opened and closed. Th
 * `vscode.notebook.onDidOpenNotebookDocument` - Fires when a notebook is opened
 * `vscode.notebook.onDidCloseNotebookDocument` - Fires when a notebook is closed, e.g when the last editor for a notebook is closed.
 
-The snippet below shows how these events can be used. It "validates" notebooks by adding an error to the last code cell saying that you should add one more cell (see `validateNotebook`). When a notebook is being opened a diagnostics collection is created and the notebook is validated. Then, a cell change listener is installed that re-validates notebooks when cells are removed or added. Last, when a notebook is closed things are cleaned up. There is no `onDidChangeTextDocument`-listener in this sample because the "validation strategy" is quite simple, however it would be just like the other listeners. ```ts
+The following sample shows how to use these events. Each newly opened notebook is being validated (`onDidOpenNotebookDocument`). Validation is a simple error to the last cell telling you to add another cell (`validateNotebook`). That logic requires to re-validate the notebook when cells are added or removed (`onDidChangeNotebookCells`). Last, when a notebook is closed things are cleaned up again (`onDidCloseNotebookDocument`).
+
+```ts
 const diagnosticsByNotebook = new Map<vscode.NotebookDocument, vscode.DiagnosticCollection>()
 
 // find last code cell and add error, clear error when there is none
 function validateNotebook(notebook: vscode.NotebookDocument) {
 	const diagnostics = diagnosticsByNotebook.get(notebook)!;
 	const last = notebook.cells.filter(cell => cell.cellKind === vscode.CellKind.Code).pop();
-	diagnostics.set(last
-		? [[last.uri, [new vscode.Diagnostic(new vscode.Range(0, 0, 1, 0), 'One more cell and you\'ll be fine...')]]] // error on first line of last cell
-		: [] // clear error
-	);
+	diagnostics.clear();
+	if (last) {
+		diagnostics.set(last.uri, [new vscode.Diagnostic(new vscode.Range(0, 0, 1, 0), 'One more cell and you\'ll be fine')])
+	}
 }
 vscode.notebook.onDidOpenNotebookDocument(notebook => {
+	// first time for this notebook
 	const diagnostics = vscode.languages.createDiagnosticCollection();
 	diagnosticsByNotebook.set(notebook, diagnostics);
 	validateNotebook(notebook);
 });
 vscode.notebook.onDidChangeNotebookCells(event => {
+	// cell added or removed
 	validateNotebook(event.document);
 });
 vscode.notebook.onDidCloseNotebookDocument(notebook => {
+	// last time for this notebook
 	const diagnostics = diagnosticsByNotebook.get(notebook)!;
 	diagnostics.dispose();
 	diagnosticsByNotebook.delete(notebook);
 });
-```In short, for a language service a notebook should be considered equal to a project in terms of defining context to which cross-file operations are scoped to. What is different to normal projects is that a code cell is like a file but it isn't disc-addressable, e.g. it is only part of a file on disc and not a separate file. That means a requirement for a "notebook-ready" language service is that it must be able to work with "virtual" files.```plaintext
-// onDidOpen|CloseNotebook to manage (project) state
-// notebook cells are "virtual" only part of a file on disk, not disc-addressable
+```
+In short, for a language service a notebook should be considered equal to a project in terms of defining context to which cross-file operations are scoped to. What is different to normal projects is that a code cell is like a file but it isn't path-addressable, e.g. it is only part of a file on disc and not a separate file. That means a requirement for a "notebook-ready" language service is that it must be able to work with "virtual" files.
 
-// selector per notebook { scheme: 'vscode-notebook-cell', language: '*', pattern: 'somenotebook.file' }
-// notebooks cells might require massage or special treatment (REPL vs language service)
+### Concat-Document Helper
+
+A notebook defines context and a cell is like a file in an "ordinary" project. This concept is simple but not always easy to support. Existing language services often require files to live on disk or files that aren't on disk cannot belong to a project. For such cases the `NotebookConcatTextDocument` exists - it projects selected code cells of a notebook onto a single document and offers utilities to map positions from cell documents to concat documents and vice versa.
+
+The following snippets uses a concat document to implement a hover that shows the cumulative line number of all javascript cells of a notebook. It uses the `positionAt`-function to map an uri and position of a cell onto a position in the concatenated document. The sample doesn't show the reverse direction. That would be `locationAt` - mapping a position onto a cell uri and cell position.
+
+```ts
+vscode.notebook.onDidOpenNotebookDocument(notebook => {
+	const concatDoc = vscode.notebook.createConcatTextDocument(notebook, { language: 'javascript' });
+	vscode.languages.registerHoverProvider(
+		{ scheme: 'vscode-notebook-cell', language: 'javascript' },
+		new class implements vscode.HoverProvider {
+			provideHover(document: vscode.TextDocument, position: vscode.Position) {
+				const concatPosition = concatDoc.positionAt(new vscode.Location(document.uri, position));
+				return new vscode.Hover(`Line ${position.line} maps onto line ${concatPosition.line}`);
+			}
+		}
+	);
+	//skipped for brevity: dispose concatDoc and hover provider when notebook closes
+});
 ```
 
-### Eclusive Features
+![](img-concat-hover.png)
 
-// html-vue
+The first code cell has three lines and the first line of the second cell is the fourth line of the concatenated document. Other useful functions of the concat document are:
 
-## concat helper doc
+- `contains` - check if document is part of this concat document
+- `onDidChange` - an event that fires when the concat document is affected by a change in the underlying notebook
+- `dispose` - frees resources and disconnects the concat document from the underlying notebook
+- `locationAt` - map a concat position onto a cell location
+- `positionAt` - map a cell location onto a concat position
+- `getText` - the concatenated value as string
 
-// sample massage results etc pp
+Note that a concat document itself has no representation on disc and that it is not part of the list of text documents (`vscode.workspace.textDocuments`) but a helper construct only. It needs custom logic to integration with an existing language service.
+
+### REPL vs Language Service
+// notebooks cells might require massage or special treatment (REPL vs language service)
+
+### Exclusive Language Features
+
+Notebook cells are ordinary text documents and that enables re-use of existing extensions and language features. This openness is wanted and at the core of VS Code extensions. However, there might be cases in which 3rd party languages features don't work well when that language is "embedded" as a notebook cell. When this happens it might be because an existing language is re-used too generalised and the recommendation for that is to use a different language identifier. For instance, instead of `html` a notebook provider can assign the `html-nb` language to its cells. That doesn't guarantee exclusiveness but expresses the contexts in which these document appear clearly. 
+
+The assignment of languages is done by the `NotebookContentProvider` during opening of a notebook document. Each cell can have a different language and it is defined via `vscode.NotebookCellData#language`.
