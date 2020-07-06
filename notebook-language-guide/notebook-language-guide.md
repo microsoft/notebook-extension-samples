@@ -139,11 +139,12 @@ The first code cell has three lines and the first line of the second cell is the
 
 Note that a concat document itself has no representation on disc and that it is not part of the list of text documents (`vscode.workspace.textDocuments`) but a helper construct only. It needs custom logic to integration with an existing language service.
 
-### REPL vs Language Service
-// notebooks cells might require massage or special treatment (REPL vs language service)
-
 ### Exclusive Language Features
 
 Notebook cells are ordinary text documents and that enables re-use of existing extensions and language features. This openness is wanted and at the core of VS Code extensions. However, there might be cases in which 3rd party languages features don't work well when that language is "embedded" as a notebook cell. When this happens it might be because an existing language is re-used too generalised and the recommendation for that is to use a different language identifier. For instance, instead of `html` a notebook provider can assign the `html-nb` language to its cells. That doesn't guarantee exclusiveness but expresses the contexts in which these document appear clearly. 
 
 The assignment of languages is done by the `NotebookContentProvider` during opening of a notebook document. Each cell can have a different language and it is defined via `vscode.NotebookCellData#language`.
+### REPL vs Language Service
+
+Notebooks should be interpreted as projects but they aren't always pure. Often they use REPL semantics, esp in a way that symbols are declared repeatedly. For instance two cells might implement different variants of a function `foo`. The REPL semantics say that the cell that was executed last defines the effective value of `foo`. This isn't uncommon and in such cases language services should be "forgiving" and not mark such duplicate declarations as errors.
+
