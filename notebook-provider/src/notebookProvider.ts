@@ -327,10 +327,22 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 	private _notebooks: Map<string, JupyterNotebook> = new Map();
 	onDidChange: vscode.Event<void> = new vscode.EventEmitter<void>().event;
 	label: string = 'Jupyter';
-	kernel?: vscode.NotebookKernel;
+	isPreferred: boolean = true;
 
-	constructor(private _extensionPath: string, private fillOutputs: boolean) {
-		this.kernel = this;
+	constructor(viewType: string, private _extensionPath: string, private fillOutputs: boolean) {
+
+		const emitter = new vscode.EventEmitter<void>();
+		vscode.notebook.registerNotebookKernelProvider({ viewType: viewType }, {
+			onDidChangeKernels: emitter.event,
+			provideKernels: () => {
+				return [this];
+			}
+		});
+
+		setTimeout(() => {
+			emitter.fire();
+		}, 5000);
+
 	}
 
 	async openNotebook(uri: vscode.Uri, context: vscode.NotebookDocumentOpenContext): Promise<vscode.NotebookData> {
@@ -363,8 +375,8 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 		return;
 	}
 
-	async saveNotebook(document: vscode.NotebookDocument, token: vscode.CancellationToken): Promise<void> {
-		return this._save(document, document.uri, token);
+	async saveNotebook(_document: vscode.NotebookDocument, _token: vscode.CancellationToken): Promise<void> {
+		return this._save(_document, _document.uri, _token);
 	}
 
 	saveNotebookAs(targetResource: vscode.Uri, document: vscode.NotebookDocument, token: vscode.CancellationToken): Promise<void> {

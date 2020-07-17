@@ -70,19 +70,6 @@
         ]
       }
     ],
-    "notebookOutputRenderer": [
-      {
-        "viewType": "kerneltest",
-        "displayName": "kernel test renderer for notebook",
-        "mimeTypes": [
-          "text/latex",
-          "text/markdown",
-          "application/json",
-          "application/vnd.plotly.v1+json",
-          "application/vnd.vega.v5+json"
-        ]
-      }
-    ],
     "menus": {
       "notebook/cell/title": [
         {
