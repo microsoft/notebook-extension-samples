@@ -50,7 +50,7 @@
   "dependencies": {},
   "devDependencies": {
     "snapsvg-cjs": "0.0.6",
-    "lodash": "~4.17.15",
+    "lodash": "~4.17.19",
     "canopy": "^0.2.0",
     "typescript": "3.8.3",
     "webpack-cli": "^3.3.10",
