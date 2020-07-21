@@ -168,8 +168,7 @@ interface RawNotebookCell {
 	kind: vscode.CellKind;
 }
 
-class RegexpProvider implements vscode.NotebookContentProvider, vscode.NotebookKernel {
-	kernel?: vscode.NotebookKernel | undefined;
+class RegexpProvider implements vscode.NotebookContentProvider {
 	label: string = 'Regex';
 
 	onDidChangeNotebook: vscode.Event<vscode.NotebookDocumentEditEvent> = new vscode.EventEmitter<vscode.NotebookDocumentEditEvent>().event;
@@ -232,7 +231,7 @@ class RegexpProvider implements vscode.NotebookContentProvider, vscode.NotebookK
 		return this._save(document, targetResource);
 	}
 
-	async executeAllCells(document: vscode.NotebookDocument, _token: vscode.CancellationToken): Promise<void> {
+	async executeAllCells(document: vscode.NotebookDocument): Promise<void> {
 		for (let i = 0; i < document.cells.length; i++) {
 			await this.executeCell(document, document.cells[i]);
 		}

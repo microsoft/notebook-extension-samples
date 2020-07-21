@@ -435,11 +435,16 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 		return;
 	}
 
-	async executeAllCells(document: vscode.NotebookDocument, token: vscode.CancellationToken): Promise<void> {
-		await this.executeCell(document, undefined, token);
+	async executeAllCells(document: vscode.NotebookDocument): Promise<void> {
+		await this.executeCell(document, undefined);
 	}
 
-	async executeCell(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined, token: vscode.CancellationToken): Promise<void> {
+	async cancelAllCellsExecution(_document: vscode.NotebookDocument) {
+
+	}
+
+
+	async executeCell(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined): Promise<void> {
 		if (cell) {
 			cell.metadata.statusMessage = 'Running';
 			cell.metadata.runStartTime = Date.now();
@@ -448,7 +453,7 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 
 		const duration = await timeFn(async () => {
 			if (DELAY_EXECUTION) {
-				return this._executeCellDelayed(document, cell, token);
+				return this._executeCellDelayed(document, cell);
 			}
 
 			const jupyterNotebook = this._notebooks.get(document.uri.toString());
@@ -463,16 +468,15 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 			cell.metadata.runState = vscode.NotebookCellRunState.Success;
 		}
 	}
+	
+	async cancelCellExecution(_document: vscode.NotebookDocument, _cell: vscode.NotebookCell) {
+	}
 
-	private async _executeCellDelayed(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined, token: vscode.CancellationToken): Promise<void> {
+	private async _executeCellDelayed(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined): Promise<void> {
 		let jupyterNotebook = this._notebooks.get(document.uri.toString());
 		return new Promise(async resolve => {
-			token.onCancellationRequested(() => {
-				resolve();
-			});
-
 			await new Promise(resolve => setTimeout(resolve, Math.random() * 2500));
-			if (jupyterNotebook && !token.isCancellationRequested) {
+			if (jupyterNotebook) {
 				return jupyterNotebook.execute(document, cell).then(resolve);
 			}
 		});
