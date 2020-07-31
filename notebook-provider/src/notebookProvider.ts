@@ -186,7 +186,7 @@ export class JupyterNotebook {
 								path.join(this._extensionPath, 'dist', 'ipywidgets.js')
 							);
 
-							let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
+							let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-webview-resource' });
 
 							outputs.unshift(
 								{
@@ -241,7 +241,7 @@ export class JupyterNotebook {
 						path.join(this._extensionPath, 'dist', 'ipywidgets.js')
 					);
 
-					let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
+					let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-webview-resource' });
 
 					rawCell.outputs?.unshift(
 						{
@@ -275,7 +275,7 @@ export class JupyterNotebook {
 								path.join(this._extensionPath, 'dist', 'ipywidgets.js')
 							);
 
-							let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
+							let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-webview-resource' });
 
 							rawCell.outputs?.unshift(
 								{
