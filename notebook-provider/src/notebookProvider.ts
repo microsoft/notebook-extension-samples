@@ -349,9 +349,9 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 		let actualUri = context.backupId ? vscode.Uri.parse(context.backupId) : uri;
 
 		try {
-			let content = await vscode.workspace.fs.readFile(actualUri);
-			let json: any = {};
+			let json;
 			try {
+				let content = await vscode.workspace.fs.readFile(actualUri);
 				json = JSON.parse(content.toString());
 			} catch {
 				json = {
