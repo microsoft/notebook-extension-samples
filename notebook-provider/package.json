@@ -19,8 +19,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onNotebookEditor:jupyter",
-    "onNotebookEditor:jupytertest"
+    "onNotebook:jupyter",
+    "onNotebook:jupytertest"
   ],
   "contributes": {
     "commands": [
