@@ -28,3 +28,22 @@ vscode.commands.registerCommand('notebook.editing.openWithNotebook', () => {
     vscode.commands.executeCommand('vscode.openWith', activeDocument.uri, 'notebookEditing');
 }
 ```
+
+### Register mirror content provider
+
+```ts
+const staticContentProviders: { viewType: string, displayName: string, priority: 'option' | 'default', selector: { filenamePattern: string, excludeFileNamePattern?: string }[] }[]
+    = vscode.extensions.all.map(a => a.packageJSON.contributes?.notebookProvider || []).reduce((acc, val) => acc.concat(val), []);
+
+staticContentProviders.forEach(provider => {
+    context.subscriptions.push(vscode.notebook.registerNotebookContentProvider(`vsls-${provider.viewType}`, new SampleProvider(), {
+        transientOutputs: false,
+        transientMetadata: {},
+        viewOptions: {
+            displayName: provider.displayName,
+            filenamePattern: provider.selector[0].excludeFileNamePattern ? { include: provider.selector[0].filenamePattern, exclude: provider.selector[0].excludeFileNamePattern } : provider.selector[0].filenamePattern,
+            exclusive: true,
+        }
+    }));
+});
+```
