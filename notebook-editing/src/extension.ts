@@ -18,21 +18,35 @@ class DecoratorUtils {
 };
 
 export function activate(context: vscode.ExtensionContext) {
-    context.subscriptions.push(
-        vscode.notebook.registerNotebookContentProvider(
-            "notebookEditing",
-            new SampleProvider(),
-            {
-                transientOutputs: false,
-                transientMetadata: {},
-                viewOptions: {
-                    displayName: 'Notebook Editing',
-                    filenamePattern: '*.notebook',
-                    exclusive: true,
+    let registeredNotebookProvider: vscode.Disposable | undefined = undefined;
+
+    context.subscriptions.push(vscode.commands.registerCommand('notebook.editing.openWithNotebook', () => {
+        const activeDocument = vscode.window.activeTextEditor?.document;
+
+        if (!activeDocument || !activeDocument.uri.fsPath.endsWith('.notebook')) {
+            return;
+        }
+
+        if (!registeredNotebookProvider) {
+            registeredNotebookProvider = vscode.notebook.registerNotebookContentProvider(
+                "notebookEditing",
+                new SampleProvider(),
+                {
+                    transientOutputs: false,
+                    transientMetadata: {},
+                    viewOptions: {
+                        displayName: 'Notebook Editing',
+                        filenamePattern: '*.notebook',
+                        exclusive: true,
+                    }
                 }
-            }
-        )
-    );
+            );
+
+            context.subscriptions.push(registeredNotebookProvider);
+        }
+
+        vscode.commands.executeCommand('vscode.openWith', activeDocument.uri, 'notebookEditing');
+    }));
 
     const topValue = -1;
     const nameTagCssRules: CssRules = {

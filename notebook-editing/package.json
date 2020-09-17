@@ -22,6 +22,12 @@
     "*"
   ],
   "contributes": {
+    "commands": [
+      {
+        "command": "notebook.editing.openWithNotebook",
+        "title": "NB Editing: open with notebook"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",
