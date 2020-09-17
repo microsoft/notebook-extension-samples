@@ -20,7 +20,17 @@ class DecoratorUtils {
 export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.notebook.registerNotebookContentProvider(
-            "notebookEditing", new SampleProvider()
+            "notebookEditing",
+            new SampleProvider(),
+            {
+                transientOutputs: false,
+                transientMetadata: {},
+                viewOptions: {
+                    displayName: 'Notebook Editing',
+                    filenamePattern: '*.notebook',
+                    exclusive: true,
+                }
+            }
         )
     );
 

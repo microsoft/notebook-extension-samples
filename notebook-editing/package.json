@@ -19,20 +19,9 @@
     "Other"
   ],
   "activationEvents": [
-    "onNotebook:notebookEditing"
+    "*"
   ],
   "contributes": {
-    "notebookProvider": [
-      {
-        "viewType": "notebookEditing",
-        "displayName": "Notebook Editing",
-        "selector": [
-          {
-            "filenamePattern": "*.notebook"
-          }
-        ]
-      }
-    ]
   },
   "scripts": {
     "compile": "tsc -p ./",
