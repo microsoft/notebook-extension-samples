@@ -10,4 +10,8 @@ export function activate(context: vscode.ExtensionContext) {
     const liveShareManager = new LiveShareManager();
 	context.subscriptions.push(liveShareManager);
 	liveShareManager.initialize();
+	
 }
+
+
+
