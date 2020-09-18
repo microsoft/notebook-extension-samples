@@ -92,14 +92,18 @@ export class LiveShareManager implements vscode.Disposable {
 	}
 }
 
-export const VSLS_GH_NB_SESSION_NAME = 'ghnb-vsls';
-export const VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT = 'ghnb-vsls-activeDocument';
-export const VSLS_GH_NB_CHANGE_ACTIVE_EDITOR_SELECTION = 'ghnb-vsls-activeEditorSelection';
-
+const VSLS_GH_NB_SESSION_NAME = 'ghnb-vsls';
+const VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT = 'ghnb-vsls-activeDocument';
+const VSLS_GH_NB_CHANGE_ACTIVE_EDITOR_SELECTION = 'ghnb-vsls-activeEditorSelection';
 const VSLS_OPEN_NOTEBOOK = 'ghnb-vsls-openNotebook';
 const VSLS_SAVE_NOTEBOOK = 'ghnb-vsls-saveNotebook';
 const VSLS_SAVE_NOTEBOOK_AS = 'ghnb-vsls-saveNotebookAs';
 const VSLS_BACKUP_NOTEBOOK = 'ghnb-vsls-backupNotebook';
+
+const VSLS_KERNEL_EXECUTE_CELL = 'ghnb-vsls-executeCell';
+const VSLS_KERNEL_CANCEL_EXECUTE_CELL = 'ghnb-vsls-cancelExecuteCell';
+const VSLS_KERNEL_EXECUTE_DOCUMENT = 'ghnb-vsls-executeDocument';
+const VSLS_KERNEL_CANCEL_EXECUTE_DOCUMENT = 'ghnb-vsls-cancelExecuteDocument';
 
 class GuestContentProvider implements vscode.NotebookContentProvider {
 	constructor(readonly originalViewType: string, readonly proxy: SharedServiceProxy) {
@@ -140,10 +144,48 @@ class GuestContentProvider implements vscode.NotebookContentProvider {
 
 }
 
+class GuestKernel implements vscode.NotebookKernel {
+	label: string = 'Live Share Kernel from Host';
+	description?: string | undefined;
+	detail?: string | undefined;
+	isPreferred: boolean = true;
+
+	constructor(readonly originalViewType: string, readonly id: string, readonly proxy: SharedServiceProxy) {
+	}
+
+	executeCell(document: vscode.NotebookDocument, cell: vscode.NotebookCell): void {
+		this.proxy.request(VSLS_KERNEL_EXECUTE_CELL, [this.originalViewType, document.uri, cell.uri, cell.index]);
+	}
+
+	cancelCellExecution(document: vscode.NotebookDocument, cell: vscode.NotebookCell): void {
+		this.proxy.request(VSLS_KERNEL_CANCEL_EXECUTE_CELL, [this.originalViewType, document.uri, cell.uri, cell.index]);
+	}
+
+	executeAllCells(document: vscode.NotebookDocument): void {
+		this.proxy.request(VSLS_KERNEL_EXECUTE_DOCUMENT, [this.originalViewType, document.uri]);
+	}
+
+	cancelAllCellsExecution(document: vscode.NotebookDocument): void {
+		this.proxy.request(VSLS_KERNEL_CANCEL_EXECUTE_DOCUMENT, [this.originalViewType, document.uri]);
+	}
+}
+
+class GuestKernelProvider implements vscode.NotebookKernelProvider {
+	private _mirrorKernel: GuestKernel;
+	constructor(readonly originalViewType: string, readonly proxy: SharedServiceProxy) {
+		this._mirrorKernel = new GuestKernel(originalViewType, `vsls-${originalViewType}-kernel`, proxy);
+	}
+
+	provideKernels(_document: vscode.NotebookDocument, _token: vscode.CancellationToken): vscode.ProviderResult<vscode.NotebookKernel[]> {
+		return [this._mirrorKernel];
+	}
+}
+
 export class VSLSGuest implements vscode.Disposable {
 	private _sharedServiceProxy?: SharedServiceProxy;
 	private _disposables: vscode.Disposable[] = [];
 	private _viewTypeToContentProvider = new Map<string, vscode.Disposable>();
+	private _viewTypeToKernelProvider = new Map<string, vscode.Disposable>();
 
 	constructor(private _liveShareAPI: LiveShare) {
 
@@ -175,6 +217,12 @@ export class VSLSGuest implements vscode.Disposable {
 						}
 					}
 				));
+			}
+
+			if (!this._viewTypeToKernelProvider.has(args.viewType)) {
+				const mirrorViewType = `vsls-${args.viewType}`;
+
+				this._viewTypeToKernelProvider.set(args.viewType, vscode.notebook.registerNotebookKernelProvider({ viewType: mirrorViewType }, new GuestKernelProvider(args.viewType, this._sharedServiceProxy!)))
 			}
 
 			let uri = vscode.Uri.parse(args.uriComponents.path);
@@ -301,17 +349,7 @@ export class VSLSHost implements vscode.Disposable {
 		this._sharedService.onRequest(VSLS_OPEN_NOTEBOOK, (args: any[]) => {
 			const viewType = args[0];
 			const uriComponents = args[1];
-
-			let uri = vscode.Uri.file(uriComponents.path);
-			uri = uri.with({
-				scheme: uriComponents.scheme,
-				path: uriComponents.path,
-				authority: uriComponents.authority,
-				fragment: uriComponents.fragment,
-				query: uriComponents.query
-			});
-
-			const localUri = this._liveShareAPI.convertSharedUriToLocal(uri);
+			const localUri = this._convertToLocalUri(uriComponents);
 
 			const existingDocument = vscode.notebook.notebookDocuments.find(document => document.viewType === viewType && document.uri.toString() === localUri.toString());
 			if (existingDocument) {
@@ -332,6 +370,32 @@ export class VSLSHost implements vscode.Disposable {
 
 			return undefined;
 		});
+
+		this._sharedService.onRequest(VSLS_KERNEL_EXECUTE_CELL, async (args: any[]) => {
+			const viewType = args[0];
+			const documentUri = this._convertToLocalUri(args[1]);
+			// const cellUri = this._convertToLocalUri(args[2]);
+			const cellIndex = args[3];
+
+			console.log(viewType, documentUri, cellIndex);
+
+			// TODO focus the right editor and cell
+			await vscode.commands.executeCommand('notebook.cell.execute');
+		});
+	}
+
+	private _convertToLocalUri(uriComponents: vscode.Uri) {
+		let uri = vscode.Uri.file(uriComponents.path);
+		uri = uri.with({
+			scheme: uriComponents.scheme,
+			path: uriComponents.path,
+			authority: uriComponents.authority,
+			fragment: uriComponents.fragment,
+			query: uriComponents.query
+		});
+
+		const localUri = this._liveShareAPI.convertSharedUriToLocal(uri);
+		return localUri;
 	}
 
 	dispose() {

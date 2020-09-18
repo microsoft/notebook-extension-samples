@@ -30,8 +30,6 @@
   },
   "dependencies": {
     "typescript": "^3.8.2",
-    "vscode-extension-telemetry": "0.1.1",
-    "vscode-nls": "^4.0.0",
     "vsls": "~1.0.2594"
   },
   "devDependencies": {
