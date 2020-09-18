@@ -372,15 +372,17 @@ export class VSLSHost implements vscode.Disposable {
 		});
 
 		this._sharedService.onRequest(VSLS_KERNEL_EXECUTE_CELL, async (args: any[]) => {
-			const viewType = args[0];
-			const documentUri = this._convertToLocalUri(args[1]);
-			// const cellUri = this._convertToLocalUri(args[2]);
 			const cellIndex = args[3];
 
-			console.log(viewType, documentUri, cellIndex);
+			// TODO focus the right editor and cell
+			await vscode.commands.executeCommand('notebook.cell.execute', { start: cellIndex, end: cellIndex + 1 });
+		});
+
+		this._sharedService.onRequest(VSLS_KERNEL_CANCEL_EXECUTE_CELL, async (args: any[]) => {
+			const cellIndex = args[3];
 
 			// TODO focus the right editor and cell
-			await vscode.commands.executeCommand('notebook.cell.execute');
+			await vscode.commands.executeCommand('notebook.cell.cancelExecution', { start: cellIndex, end: cellIndex + 1 });
 		});
 	}
 
