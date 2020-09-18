@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { LiveShare, SharedService, SharedServiceProxy } from 'vsls';
 type CssRules = { [key: string]: string | number; };
@@ -93,6 +92,7 @@ export class LiveShareManager implements vscode.Disposable {
 }
 
 const VSLS_GH_NB_SESSION_NAME = 'ghnb-vsls';
+const VSLS_GUEST_INITIALIZE = 'ghnb-vsls-initialize';
 const VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT = 'ghnb-vsls-activeDocument';
 const VSLS_GH_NB_CHANGE_ACTIVE_EDITOR_SELECTION = 'ghnb-vsls-activeEditorSelection';
 const VSLS_OPEN_NOTEBOOK = 'ghnb-vsls-openNotebook';
@@ -198,32 +198,53 @@ export class VSLSGuest implements vscode.Disposable {
 			return;
 		}
 
+		const hostContentProviders = await this._sharedServiceProxy.request(VSLS_GUEST_INITIALIZE, []);
+
+
+		hostContentProviders.forEach((provider: { viewType: string, displayName: string, priority: 'option' | 'default',  selector: { filenamePattern: string, excludeFileNamePattern?: string }[] }) => {
+			const mirrorViewType = `vsls-${provider.viewType}`;
+
+			this._viewTypeToContentProvider.set(provider.viewType, vscode.notebook.registerNotebookContentProvider(
+				mirrorViewType,
+				new GuestContentProvider(provider.viewType, this._sharedServiceProxy!),
+				{
+					transientOutputs: false, transientMetadata: {}, viewOptions: {
+						displayName: `Live Share - ${provider.displayName}`,
+						filenamePattern: provider.selector.map(selector => selector.excludeFileNamePattern ? { include: selector.filenamePattern, exclude: selector.excludeFileNamePattern } : selector.filenamePattern )[0],
+						exclusive: true
+					}
+				}
+			));
+
+			this._viewTypeToKernelProvider.set(provider.viewType, vscode.notebook.registerNotebookKernelProvider({ viewType: mirrorViewType }, new GuestKernelProvider(provider.viewType, this._sharedServiceProxy!)))
+		});
+
 		this._sharedServiceProxy.onNotify(VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT, (args: { uriComponents?: vscode.Uri, viewType?: string; }) => {
 			if (!args.uriComponents || !args.viewType) {
 				return;
 			}
 
-			if (!this._viewTypeToContentProvider.has(args.viewType)) {
-				// create a mirror content provider
-				const ext = path.extname(args.uriComponents.path);
-				this._viewTypeToContentProvider.set(args.viewType, vscode.notebook.registerNotebookContentProvider(
-					`vsls-${args.viewType}`,
-					new GuestContentProvider(args.viewType, this._sharedServiceProxy!),
-					{
-						transientOutputs: false, transientMetadata: {}, viewOptions: {
-							displayName: `Live Share - ${args.viewType}`,
-							filenamePattern: `*${ext}`,
-							exclusive: true
-						}
-					}
-				));
-			}
+			// if (!this._viewTypeToContentProvider.has(args.viewType)) {
+			// 	// create a mirror content provider
+			// 	const ext = path.extname(args.uriComponents.path);
+			// 	this._viewTypeToContentProvider.set(args.viewType, vscode.notebook.registerNotebookContentProvider(
+			// 		`vsls-${args.viewType}`,
+			// 		new GuestContentProvider(args.viewType, this._sharedServiceProxy!),
+			// 		{
+			// 			transientOutputs: false, transientMetadata: {}, viewOptions: {
+			// 				displayName: `Live Share - ${args.viewType}`,
+			// 				filenamePattern: [`*${ext}`],
+			// 				exclusive: true
+			// 			}
+			// 		}
+			// 	));
+			// }
 
-			if (!this._viewTypeToKernelProvider.has(args.viewType)) {
-				const mirrorViewType = `vsls-${args.viewType}`;
+			// if (!this._viewTypeToKernelProvider.has(args.viewType)) {
+			// 	const mirrorViewType = `vsls-${args.viewType}`;
 
-				this._viewTypeToKernelProvider.set(args.viewType, vscode.notebook.registerNotebookKernelProvider({ viewType: mirrorViewType }, new GuestKernelProvider(args.viewType, this._sharedServiceProxy!)))
-			}
+			// 	this._viewTypeToKernelProvider.set(args.viewType, vscode.notebook.registerNotebookKernelProvider({ viewType: mirrorViewType }, new GuestKernelProvider(args.viewType, this._sharedServiceProxy!)))
+			// }
 
 			let uri = vscode.Uri.parse(args.uriComponents.path);
 			uri = uri.with({
@@ -296,8 +317,10 @@ export class VSLSHost implements vscode.Disposable {
 	private _sharedService: SharedService | null = null;
 	private _disposables: vscode.Disposable[] = [];
 
-	constructor(private _liveShareAPI: LiveShare) {
+	private _localContentProviders: { viewType: string, displayName: string, priority: 'option' | 'default',  selector: { filenamePattern: string, excludeFileNamePattern?: string }[]}[];
 
+	constructor(private _liveShareAPI: LiveShare) {
+		this._localContentProviders = vscode.extensions.all.map(a => a.packageJSON.contributes?.notebookProvider || []).reduce((acc, val) => acc.concat(val), []);
 	}
 
 	public async initialize() {
@@ -346,7 +369,11 @@ export class VSLSHost implements vscode.Disposable {
 
 		}));
 
-		this._sharedService.onRequest(VSLS_OPEN_NOTEBOOK, (args: any[]) => {
+		this._sharedService.onRequest(VSLS_GUEST_INITIALIZE, () => {
+			return this._localContentProviders;
+		});
+
+		this._sharedService.onRequest(VSLS_OPEN_NOTEBOOK, async (args: any[]) => {
 			const viewType = args[0];
 			const uriComponents = args[1];
 			const localUri = this._convertToLocalUri(uriComponents);
@@ -368,6 +395,22 @@ export class VSLSHost implements vscode.Disposable {
 				return notebookData;
 			}
 
+			await vscode.commands.executeCommand('vscode.openWith', localUri, viewType);
+			const document = vscode.notebook.activeNotebookEditor?.document;
+
+			if (document) {
+				return {
+					languages: document.languages,
+					metadata: document.metadata,
+					cells: document.cells.map(cell => ({
+						cellKind: cell.cellKind,
+						language: cell.language,
+						metadata: cell.metadata,
+						outputs: cell.outputs,
+						source: cell.document.getText()
+					}))
+				};
+			}
 			return undefined;
 		});
 
