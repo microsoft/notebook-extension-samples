@@ -1828,7 +1828,7 @@ declare module 'vscode' {
 				 */
 				viewOptions?: {
 					displayName: string;
-					filenamePattern: NotebookFilenamePattern;//[];
+					filenamePattern: NotebookFilenamePattern[];
 					exclusive?: boolean;
 				};
 			}

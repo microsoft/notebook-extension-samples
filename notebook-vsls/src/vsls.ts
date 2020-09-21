@@ -210,7 +210,7 @@ export class VSLSGuest implements vscode.Disposable {
 				{
 					transientOutputs: false, transientMetadata: {}, viewOptions: {
 						displayName: `Live Share - ${provider.displayName}`,
-						filenamePattern: provider.selector.map(selector => selector.excludeFileNamePattern ? { include: selector.filenamePattern, exclude: selector.excludeFileNamePattern } : selector.filenamePattern )[0],
+						filenamePattern: provider.selector.map(selector => selector.excludeFileNamePattern ? { include: selector.filenamePattern, exclude: selector.excludeFileNamePattern } : selector.filenamePattern ),
 						exclusive: true
 					}
 				}
@@ -223,28 +223,6 @@ export class VSLSGuest implements vscode.Disposable {
 			if (!args.uriComponents || !args.viewType) {
 				return;
 			}
-
-			// if (!this._viewTypeToContentProvider.has(args.viewType)) {
-			// 	// create a mirror content provider
-			// 	const ext = path.extname(args.uriComponents.path);
-			// 	this._viewTypeToContentProvider.set(args.viewType, vscode.notebook.registerNotebookContentProvider(
-			// 		`vsls-${args.viewType}`,
-			// 		new GuestContentProvider(args.viewType, this._sharedServiceProxy!),
-			// 		{
-			// 			transientOutputs: false, transientMetadata: {}, viewOptions: {
-			// 				displayName: `Live Share - ${args.viewType}`,
-			// 				filenamePattern: [`*${ext}`],
-			// 				exclusive: true
-			// 			}
-			// 		}
-			// 	));
-			// }
-
-			// if (!this._viewTypeToKernelProvider.has(args.viewType)) {
-			// 	const mirrorViewType = `vsls-${args.viewType}`;
-
-			// 	this._viewTypeToKernelProvider.set(args.viewType, vscode.notebook.registerNotebookKernelProvider({ viewType: mirrorViewType }, new GuestKernelProvider(args.viewType, this._sharedServiceProxy!)))
-			// }
 
 			let uri = vscode.Uri.parse(args.uriComponents.path);
 			uri = uri.with({
