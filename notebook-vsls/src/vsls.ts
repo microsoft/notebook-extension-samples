@@ -377,7 +377,7 @@ export class VSLSHost implements vscode.Disposable {
 	private _localContentProviders: { viewType: string, displayName: string, priority: 'option' | 'default',  selector: { filenamePattern: string, excludeFileNamePattern?: string }[]}[];
 
 	constructor(private _liveShareAPI: LiveShare) {
-		this._localContentProviders = vscode.extensions.all.map(a => a.packageJSON.contributes?.notebookProvider || []).reduce((acc, val) => acc.concat(val), []);
+		this._localContentProviders = []; //vscode.extensions.all.map(a => a.packageJSON.contributes?.notebookProvider || []).reduce((acc, val) => acc.concat(val), []);
 	}
 
 	public async initialize() {
@@ -419,7 +419,7 @@ export class VSLSHost implements vscode.Disposable {
 
 		this._disposables.push(vscode.notebook.onDidChangeActiveNotebookEditor(() => {
 			const activeEditor = vscode.notebook.activeNotebookEditor;
-			vscode.window.showInformationMessage(VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT, 'NOTIFY');
+			// vscode.window.showInformationMessage(VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT, 'NOTIFY');
 			this._sharedService?.notify(VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT, {
 				uriComponents: activeEditor?.document.uri ? this._liveShareAPI.convertLocalUriToShared(activeEditor!.document.uri) : undefined,
 				viewType: activeEditor?.document.viewType,
