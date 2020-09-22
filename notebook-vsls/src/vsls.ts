@@ -105,10 +105,27 @@ const VSLS_KERNEL_CANCEL_EXECUTE_CELL = 'ghnb-vsls-cancelExecuteCell';
 const VSLS_KERNEL_EXECUTE_DOCUMENT = 'ghnb-vsls-executeDocument';
 const VSLS_KERNEL_CANCEL_EXECUTE_DOCUMENT = 'ghnb-vsls-cancelExecuteDocument';
 
+const VSLS_CELL_METDATA_CHANGE = 'ghnb-vsls-cellMetadataChange';
+const VSLS_CELL_OUTPUTS_CHANGE = 'ghnb-vsls-cellOutputsChange';
+
 class GuestContentProvider implements vscode.NotebookContentProvider {
+	private _options: vscode.NotebookDocumentContentOptions = { transientMetadata: {}, transientOutputs: false };
+	get options() {
+		return this._options;
+	}
+
+	set options(n: vscode.NotebookDocumentContentOptions) {
+		this._options = n;
+		this._onDidChangeNotebookContentOptions.fire(n);
+	}
+
+	private _onDidChangeNotebookContentOptions = new vscode.EventEmitter<vscode.NotebookDocumentContentOptions>();
+	onDidChangeNotebookContentOptions = this._onDidChangeNotebookContentOptions.event;
+
 	constructor(readonly originalViewType: string, readonly proxy: SharedServiceProxy) {
 
 	}
+
 	async openNotebook(uri: vscode.Uri, openContext: vscode.NotebookDocumentOpenContext): Promise<vscode.NotebookData> {
 		const data = await this.proxy.request(VSLS_OPEN_NOTEBOOK, [this.originalViewType, uri, openContext]);
 		if (data) {
@@ -184,7 +201,7 @@ class GuestKernelProvider implements vscode.NotebookKernelProvider {
 export class VSLSGuest implements vscode.Disposable {
 	private _sharedServiceProxy?: SharedServiceProxy;
 	private _disposables: vscode.Disposable[] = [];
-	private _viewTypeToContentProvider = new Map<string, vscode.Disposable>();
+	private _viewTypeToContentProvider = new Map<string, GuestContentProvider>();
 	private _viewTypeToKernelProvider = new Map<string, vscode.Disposable>();
 
 	constructor(private _liveShareAPI: LiveShare) {
@@ -203,10 +220,11 @@ export class VSLSGuest implements vscode.Disposable {
 
 		hostContentProviders.forEach((provider: { viewType: string, displayName: string, priority: 'option' | 'default',  selector: { filenamePattern: string, excludeFileNamePattern?: string }[] }) => {
 			const mirrorViewType = `vsls-${provider.viewType}`;
+			const contentProvider = new GuestContentProvider(provider.viewType, this._sharedServiceProxy!);
 
-			this._viewTypeToContentProvider.set(provider.viewType, vscode.notebook.registerNotebookContentProvider(
+			vscode.notebook.registerNotebookContentProvider(
 				mirrorViewType,
-				new GuestContentProvider(provider.viewType, this._sharedServiceProxy!),
+				contentProvider,
 				{
 					transientOutputs: false, transientMetadata: {}, viewOptions: {
 						displayName: `Live Share - ${provider.displayName}`,
@@ -214,14 +232,19 @@ export class VSLSGuest implements vscode.Disposable {
 						exclusive: true
 					}
 				}
-			));
+			);
+			this._viewTypeToContentProvider.set(provider.viewType, contentProvider);
 
 			this._viewTypeToKernelProvider.set(provider.viewType, vscode.notebook.registerNotebookKernelProvider({ viewType: mirrorViewType }, new GuestKernelProvider(provider.viewType, this._sharedServiceProxy!)))
 		});
 
-		this._sharedServiceProxy.onNotify(VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT, (args: { uriComponents?: vscode.Uri, viewType?: string; }) => {
+		this._sharedServiceProxy.onNotify(VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT, (args: { uriComponents?: vscode.Uri, viewType?: string; options?: vscode.NotebookDocumentContentOptions; }) => {
 			if (!args.uriComponents || !args.viewType) {
 				return;
+			}
+
+			if (args.options) {
+				this._viewTypeToContentProvider.get(args.viewType!)!.options = args.options;
 			}
 
 			let uri = vscode.Uri.parse(args.uriComponents.path);
@@ -258,7 +281,7 @@ export class VSLSGuest implements vscode.Disposable {
 				backgroundColor: '#f0f',
 				textDecoration: `none; ${stringifiedNameTagCss}`
 			},
-			backgroundColor: '#0ff',
+			// backgroundColor: '#0ff',
 			borderColor: '#f0f'
 		});
 		this._sharedServiceProxy.onNotify(VSLS_GH_NB_CHANGE_ACTIVE_EDITOR_SELECTION, (args: any) => {
@@ -266,21 +289,77 @@ export class VSLSGuest implements vscode.Disposable {
 				return;
 			}
 
-			let uri = vscode.Uri.parse(args.uriComponents.path);
-			uri = uri.with({
-				scheme: args.uriComponents.scheme,
-				authority: args.uriComponents.authority,
-				fragment: args.uriComponents.fragment,
-				path: args.uriComponents.path,
-				query: args.uriComponents.query
-			});
-
+			const uri = this._toSharedUri(args.uriComponents);
 			const range = args.range;
 			const activeEditor = vscode.notebook.visibleNotebookEditors.find(editor => editor.document.uri.toString() === uri.toString());
 			activeEditor?.setDecorations(decorationType, range);
 
 			return;
 		});
+
+		this._sharedServiceProxy.onNotify(VSLS_CELL_METDATA_CHANGE, (args: any) => {
+			if (!args.uriComponents || !args.cellFriendlyId || !args.metadata) {
+				return;
+			}
+
+			const uri = this._toSharedUri(args.uriComponents);
+			const cellFriendlyId = args.cellFriendlyId;
+
+			const activeEditor = vscode.notebook.visibleNotebookEditors.find(editor => editor.document.uri.toString() === uri.toString());
+
+			const cell = activeEditor?.document.cells.find(cell => cell.metadata.custom?._vsls_friendlyId === cellFriendlyId);
+
+			if (!cell) {
+				return;
+			}
+
+			const cellMetadata = Object.assign({}, args.metadata);
+			if (cellMetadata.custom) {
+				cellMetadata.custom['_vsls_friendlyId'] = cellFriendlyId;
+			} else {
+				cellMetadata.custom = { _vsls_friendlyId: cellFriendlyId };
+			}
+
+			const edit = new vscode.WorkspaceEdit();
+			edit.replaceNotebookCellMetadata(activeEditor!.document.uri, cell.index, cellMetadata);
+			vscode.workspace.applyEdit(edit);
+		});
+
+		this._sharedServiceProxy.onNotify(VSLS_CELL_OUTPUTS_CHANGE, (args: any) => {
+			if (!args.uriComponents || !args.data) {
+				return;
+			}
+
+			const uri = this._toSharedUri(args.uriComponents);
+			const activeEditor = vscode.notebook.visibleNotebookEditors.find(editor => editor.document.uri.toString() === uri.toString());
+
+			if (!activeEditor) {
+				return;
+			}
+
+			const edit = new vscode.WorkspaceEdit();
+			args.data.forEach((cellData: { friendlyId: string, outputs: vscode.CellOutput[] }) => {
+				const cell = activeEditor.document.cells.find(cell => cell.metadata?.custom?._vsls_friendlyId === cellData.friendlyId);
+				if (cell) {
+					edit.replaceNotebookCellOutput(activeEditor.document.uri, cell.index, cellData.outputs);
+				}
+			});
+
+			vscode.workspace.applyEdit(edit);
+		});
+	}
+
+	private _toSharedUri(uriComponents: vscode.Uri): vscode.Uri {
+		let uri = vscode.Uri.parse(uriComponents.path);
+		uri = uri.with({
+			scheme: uriComponents.scheme,
+			authority: uriComponents.authority,
+			fragment: uriComponents.fragment,
+			path: uriComponents.path,
+			query: uriComponents.query
+		});
+
+		return uri;
 	}
 
 	dispose() {
@@ -309,6 +388,33 @@ export class VSLSHost implements vscode.Disposable {
 			return;
 		}
 
+		const providers: {
+			viewType: string;
+			displayName: string;
+			filenamePattern: (string | { include: string; exclude: string; })[];
+			options: vscode.NotebookDocumentContentOptions;
+		}[] | undefined = await vscode.commands.executeCommand('vscode.resolveNotebookContentProviders');
+
+		if (providers) {
+			this._localContentProviders = providers.map(provider => ({
+				viewType: provider.viewType,
+				displayName: provider.displayName,
+				priority: 'default',
+				selector: provider.filenamePattern.map(pattern => {
+					if (typeof pattern === 'string') {
+						return { filenamePattern: pattern };
+					}
+					
+					return {
+						filenamePattern: pattern.include,
+						excludeFileNamePattern: pattern.exclude
+					};
+				})
+			}))
+		} else {
+			this._localContentProviders = [];
+		}
+
 		let activeEditorDisposable: vscode.Disposable | undefined = undefined;
 
 		this._disposables.push(vscode.notebook.onDidChangeActiveNotebookEditor(() => {
@@ -316,7 +422,8 @@ export class VSLSHost implements vscode.Disposable {
 			vscode.window.showInformationMessage(VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT, 'NOTIFY');
 			this._sharedService?.notify(VSLS_GH_NB_CHANGE_ACTIVE_DOCUMENT, {
 				uriComponents: activeEditor?.document.uri ? this._liveShareAPI.convertLocalUriToShared(activeEditor!.document.uri) : undefined,
-				viewType: activeEditor?.document.viewType
+				viewType: activeEditor?.document.viewType,
+				options: activeEditor?.document.contentOptions
 			});
 
 			activeEditorDisposable?.dispose();
@@ -347,6 +454,36 @@ export class VSLSHost implements vscode.Disposable {
 
 		}));
 
+		this._disposables.push(vscode.notebook.onDidChangeCellMetadata((e) => {
+			const document = e.document;
+			const cell = e.cell;
+
+			const sharedUri = this._liveShareAPI.convertLocalUriToShared(document.uri);
+			const cellFriendlyId = cell.uri.toString();
+			const metadata = cell.metadata;
+
+			this._sharedService?.notify(VSLS_CELL_METDATA_CHANGE, {
+				uriComponents: sharedUri,
+				cellFriendlyId,
+				metadata
+			});
+		}));
+
+		this._disposables.push(vscode.notebook.onDidChangeCellOutputs((e) => {
+			const document = e.document;
+			const cells = e.cells;
+
+			const sharedUri = this._liveShareAPI.convertLocalUriToShared(document.uri);
+
+			this._sharedService?.notify(VSLS_CELL_OUTPUTS_CHANGE, {
+				uriComponents: sharedUri,
+				data: cells.map(cell => ({
+					friendlyId: cell.uri.toString(),
+					outputs: cell.outputs
+				}))
+			});
+		}));
+
 		this._sharedService.onRequest(VSLS_GUEST_INITIALIZE, () => {
 			return this._localContentProviders;
 		});
@@ -361,13 +498,22 @@ export class VSLSHost implements vscode.Disposable {
 				const notebookData: vscode.NotebookData = {
 					languages: existingDocument.languages,
 					metadata: existingDocument.metadata,
-					cells: existingDocument.cells.map(cell => ({
-						cellKind: cell.cellKind,
-						language: cell.language,
-						metadata: cell.metadata,
-						outputs: cell.outputs,
-						source: cell.document.getText()
-					}))
+					cells: existingDocument.cells.map(cell => {
+						const cellMetadata = Object.assign({}, cell.metadata);
+						if (cellMetadata.custom) {
+							cellMetadata.custom['_vsls_friendlyId'] = cell.uri.toString();
+						} else {
+							cellMetadata.custom = { _vsls_friendlyId: cell.uri.toString() };
+						}
+
+						return {
+							cellKind: cell.cellKind,
+							language: cell.language,
+							metadata: cellMetadata,
+							outputs: cell.outputs,
+							source: cell.document.getText()
+						};
+					})
 				};
 
 				return notebookData;

@@ -6,11 +6,8 @@
 import * as vscode from 'vscode';
 import { LiveShareManager } from './vsls';
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     const liveShareManager = new LiveShareManager();
 	context.subscriptions.push(liveShareManager);
 	liveShareManager.initialize();
 }
-
-
-
