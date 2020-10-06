@@ -107,6 +107,7 @@ const VSLS_KERNEL_CANCEL_EXECUTE_DOCUMENT = 'ghnb-vsls-cancelExecuteDocument';
 
 const VSLS_CELL_METDATA_CHANGE = 'ghnb-vsls-cellMetadataChange';
 const VSLS_CELL_OUTPUTS_CHANGE = 'ghnb-vsls-cellOutputsChange';
+const VSLS_CELLS_CHANGE = 'ghnb-vsls-cellsChange';
 
 class GuestContentProvider implements vscode.NotebookContentProvider {
 	private _options: vscode.NotebookDocumentContentOptions = { transientMetadata: {}, transientOutputs: false };
@@ -347,6 +348,27 @@ export class VSLSGuest implements vscode.Disposable {
 
 			vscode.workspace.applyEdit(edit);
 		});
+		
+		this._sharedServiceProxy.onNotify(VSLS_CELLS_CHANGE, (args: any) => {
+			if (!args.uriComponents || !args.changes) {
+				return;
+			}
+
+			const uri = this._toSharedUri(args.uriComponents);
+			const activeEditor = vscode.notebook.visibleNotebookEditors.find(editor => editor.document.uri.toString() === uri.toString());
+
+			if (!activeEditor) {
+				return;
+			}
+
+			const edit = new vscode.WorkspaceEdit();
+
+			args.changes.forEach((change: { start: number, deletedCount: number, items: vscode.NotebookCellData[] }) => {
+				edit.replaceNotebookCells(activeEditor.document.uri, change.start, change.start + change.deletedCount, change.items);
+			});
+
+			vscode.workspace.applyEdit(edit);
+		});
 	}
 
 	private _toSharedUri(uriComponents: vscode.Uri): vscode.Uri {
@@ -484,6 +506,30 @@ export class VSLSHost implements vscode.Disposable {
 			});
 		}));
 
+		this._disposables.push(vscode.notebook.onDidChangeNotebookCells((e) => {
+			const document = e.document;
+			const changes = e.changes;
+
+			const sharedUri = this._liveShareAPI.convertLocalUriToShared(document.uri);
+
+			this._sharedService?.notify(VSLS_CELLS_CHANGE, {
+				uriComponents: sharedUri,
+				changes: changes.map(change => {
+					return {
+						start: change.start,
+						deletedCount: change.deletedCount,
+						items: change.items.map(item => ({
+							cellKind: item.cellKind,
+							language: item.language,
+							source: item.document.getText(),
+							metadata: item.metadata,
+							outputs: item.outputs
+						}))
+					}
+				})
+			})
+
+		}));
 		this._sharedService.onRequest(VSLS_GUEST_INITIALIZE, () => {
 			return this._localContentProviders;
 		});
