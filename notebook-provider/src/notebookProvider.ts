@@ -331,7 +331,7 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 
 	constructor(viewType: string, private _extensionPath: string, private fillOutputs: boolean) {
 
-		const emitter = new vscode.EventEmitter<void>();
+		const emitter = new vscode.EventEmitter<vscode.NotebookDocument | undefined>();
 		vscode.notebook.registerNotebookKernelProvider({ viewType: viewType }, {
 			onDidChangeKernels: emitter.event,
 			provideKernels: () => {
@@ -340,7 +340,7 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 		});
 
 		setTimeout(() => {
-			emitter.fire();
+			emitter.fire(undefined);
 		}, 5000);
 
 	}

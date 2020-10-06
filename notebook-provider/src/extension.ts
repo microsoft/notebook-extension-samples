@@ -34,8 +34,8 @@ export function activate(context: vscode.ExtensionContext) {
 	// ));
 
 	vscode.commands.registerCommand('notebook.saveToMarkdown', () => {
-		if (vscode.notebook.activeNotebookEditor) {
-			let { document } = vscode.notebook.activeNotebookEditor;
+		if (vscode.window.activeNotebookEditor) {
+			let { document } = vscode.window.activeNotebookEditor;
 			let uri = document.uri;
 			let fsPath = uri.fsPath;
 			let baseName = path.basename(fsPath, path.extname(fsPath));
