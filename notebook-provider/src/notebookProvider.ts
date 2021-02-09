@@ -53,27 +53,21 @@ export interface RawCell {
 }
 
 export class Cell {
-	public outputs: vscode.CellOutput[] = [];
+	public outputs: vscode.NotebookCellOutput[] = [];
 
 	constructor(
 		public source: string[],
 		public cell_type: 'markdown' | 'code',
-		private _outputs: vscode.CellOutput[]
+		private _outputs: vscode.NotebookCellOutput[]
 	) {
 
 	}
 
 	containHTML() {
-		return this._outputs && this._outputs.some(output => {
-			if (output.outputKind === vscode.CellOutputKind.Rich && output.data['text/html']) {
-				return true;
-			}
-
-			return false;
-		});
+		return this._outputs && this._outputs.find(op => op.outputs.find(opi => opi.mime === 'text/html'));
 	}
 
-	insertDependencies(dependency: vscode.CellOutput) {
+	insertDependencies(dependency: vscode.NotebookCellOutput) {
 		this._outputs.unshift(dependency);
 	}
 
@@ -92,44 +86,47 @@ export class Cell {
 	}
 }
 
-function transformOutputToCore(rawOutput: RawCellOutput): vscode.CellOutput {
+function transformOutputToCore(rawOutput: RawCellOutput): vscode.NotebookCellOutput {
 	if (rawOutput.output_type === 'execute_result' || rawOutput.output_type === 'display_data') {
-		return {
-			outputKind: vscode.CellOutputKind.Rich,
-			data: rawOutput.data
-		} as vscode.CellDisplayOutput;
+		const items: vscode.NotebookCellOutputItem[] = [];
+		for (const key in rawOutput.data) {
+			items.push(new vscode.NotebookCellOutputItem(key, rawOutput.data[key], undefined));
+		}
+		return new vscode.NotebookCellOutput(items)
 	} else if (rawOutput.output_type === 'stream') {
-		return {
-			outputKind: vscode.CellOutputKind.Text,
-			text: rawOutput.text
-		} as vscode.CellStreamOutput;
+		return new vscode.NotebookCellOutput([new vscode.NotebookCellOutputItem('application/x.notebook.stream', Array.isArray(rawOutput.text) ? rawOutput.text.join('') : rawOutput.text)])
 	} else {
-		return {
-			outputKind: vscode.CellOutputKind.Error,
+		return new vscode.NotebookCellOutput([new vscode.NotebookCellOutputItem('application/x.notebook.error-traceback', {
 			ename: (<CellErrorOutput>rawOutput).ename,
 			evalue: (<CellErrorOutput>rawOutput).evalue,
 			traceback: (<CellErrorOutput>rawOutput).traceback
-		} as vscode.CellErrorOutput;
+		})]);
 	}
 }
 
-function transformOutputFromCore(output: vscode.CellOutput): RawCellOutput {
-	if (output.outputKind === vscode.CellOutputKind.Text) {
+function transformOutputFromCore(output: vscode.NotebookCellOutput): RawCellOutput {
+	if (output.outputs.find(op => op.mime === 'application/x.notebook.stream')) {
 		return {
 			output_type: 'stream',
-			text: output.text
-		};
-	} else if (output.outputKind === vscode.CellOutputKind.Error) {
+			text: output.outputs.find(op => op.mime === 'application/x.notebook.stream')?.value as string || ''
+		}
+	} else 	if (output.outputs.find(op => op.mime === 'application/x.notebook.error-traceback')) {
+		const item = output.outputs.find(op => op.mime === 'application/x.notebook.error-traceback');
 		return {
 			output_type: 'error',
-			ename: output.ename,
-			evalue: output.evalue,
-			traceback: output.traceback
-		};
+			ename: (item as any).ename,
+			evalue: (item as any).evalue,
+			traceback: (item as any).traceback
+		}
 	} else {
+		let data: { [key: string]: unknown } = {};
+
+		output.outputs.forEach(op => {
+			data[op.mime] = data.value
+		})
 		return {
 			output_type: 'display_data',
-			data: output.data
+			data: data
 		};
 	}
 }
@@ -173,33 +170,33 @@ export class JupyterNotebook {
 				displayOrder: this.displayOrders,
 			},
 			cells: this.notebookJSON.cells.map(((raw_cell: RawCell) => {
-				let outputs: vscode.CellOutput[] = [];
+				let outputs: vscode.NotebookCellOutput[] = [];
 				if (this.fillOutputs) {
 					outputs = raw_cell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
 
-					if (!this.preloadScript) {
-						let containHTML = this.containHTML(raw_cell);
+					// if (!this.preloadScript) {
+					// 	let containHTML = this.containHTML(raw_cell);
 
-						if (containHTML) {
-							this.preloadScript = true;
-							const scriptPathOnDisk = vscode.Uri.file(
-								path.join(this._extensionPath, 'dist', 'ipywidgets.js')
-							);
+					// 	if (containHTML) {
+					// 		this.preloadScript = true;
+					// 		const scriptPathOnDisk = vscode.Uri.file(
+					// 			path.join(this._extensionPath, 'dist', 'ipywidgets.js')
+					// 		);
 
-							let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-webview-resource' });
+					// 		let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-webview-resource' });
 
-							outputs.unshift(
-								{
-									outputKind: vscode.CellOutputKind.Rich,
-									'data': {
-										'text/html': [
-											`<script src="${scriptUri}"></script>\n`,
-										]
-									}
-								}
-							);
-						}
-					}
+					// 		outputs.unshift(
+					// 			{
+					// 				outputKind: vscode.CellOutputKind.Rich,
+					// 				'data': {
+					// 					'text/html': [
+					// 						`<script src="${scriptUri}"></script>\n`,
+					// 					]
+					// 				}
+					// 			}
+					// 		);
+					// 	}
+					// }
 				}
 
 				const executionOrder = typeof raw_cell.execution_count === 'number' ? raw_cell.execution_count : undefined;
@@ -214,7 +211,7 @@ export class JupyterNotebook {
 				const metadata = { editable: cellEditable, runnable: runnable, executionOrder };
 
 				return {
-					source: raw_cell.source ? raw_cell.source.join('') : '',
+					source: raw_cell.source ? (Array.isArray(raw_cell.source) ? raw_cell.source.join('') : raw_cell.source) : '',
 					language: this.notebookJSON?.metadata?.language_info?.name || 'python',
 					cellKind: raw_cell.cell_type === 'code' ? vscode.CellKind.Code : vscode.CellKind.Markdown,
 					outputs: outputs,
@@ -255,11 +252,10 @@ export class JupyterNotebook {
 					);
 				}
 			}
-			cell.outputs = rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
-			const executionOrder = this.getNextExecutionOrder();
-			if (cell.metadata) {
-				cell.metadata.executionOrder = executionOrder;
-			}
+			const edit = new vscode.WorkspaceEdit();
+			edit.replaceNotebookCellOutput(document.uri, cell.index, rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || []);
+			edit.replaceNotebookCellMetadata(document.uri, cell.index, { ...cell.metadata, executionOrder: this.getNextExecutionOrder() });
+			await vscode.workspace.applyEdit(edit);
 		} else {
 			if (!this.fillOutputs) {
 				for (let i = 0; i < document.cells.length; i++) {
@@ -289,11 +285,11 @@ export class JupyterNotebook {
 							);
 						}
 					}
-					cell.outputs = rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
-					const executionOrder = this.getNextExecutionOrder();
-					if (cell.metadata) {
-						cell.metadata.executionOrder = executionOrder;
-					}
+
+					const edit = new vscode.WorkspaceEdit();
+					edit.replaceNotebookCellOutput(document.uri, cell.index, rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || []);
+					edit.replaceNotebookCellMetadata(document.uri, cell.index, { ...cell.metadata, executionOrder: this.getNextExecutionOrder() });
+					await vscode.workspace.applyEdit(edit);
 				}
 
 				this.fillOutputs = true;
@@ -322,8 +318,6 @@ async function timeFn(fn: () => Promise<void>): Promise<number> {
 const DELAY_EXECUTION = true;
 
 export class NotebookProvider implements vscode.NotebookContentProvider, vscode.NotebookKernel {
-	private _onDidChangeNotebook = new vscode.EventEmitter<vscode.NotebookDocumentEditEvent>();
-	onDidChangeNotebook: vscode.Event<vscode.NotebookDocumentEditEvent> = this._onDidChangeNotebook.event;
 	private _notebooks: Map<string, JupyterNotebook> = new Map();
 	onDidChange: vscode.Event<void> = new vscode.EventEmitter<void>().event;
 	label: string = 'Jupyter';
@@ -474,7 +468,7 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 
 	private async _executeCellDelayed(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined): Promise<void> {
 		let jupyterNotebook = this._notebooks.get(document.uri.toString());
-		return new Promise(async resolve => {
+		return new Promise<void>(async resolve => {
 			await new Promise(resolve => setTimeout(resolve, Math.random() * 2500));
 			if (jupyterNotebook) {
 				return jupyterNotebook.execute(document, cell).then(resolve);

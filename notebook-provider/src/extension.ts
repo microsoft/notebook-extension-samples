@@ -11,6 +11,7 @@ import { NotebookProvider } from './notebookProvider';
 
 export function activate(context: vscode.ExtensionContext) {
 	console.log(context.extensionPath);
+	console.log(context.globalStorageUri.fsPath);
 
 	context.subscriptions.push(vscode.notebook.registerNotebookContentProvider('jupyter', new NotebookProvider('jupyter', context.extensionPath, true)));
 	context.subscriptions.push(vscode.notebook.registerNotebookContentProvider('jupytertest', new NotebookProvider('jupytertest', context.extensionPath, false)));
