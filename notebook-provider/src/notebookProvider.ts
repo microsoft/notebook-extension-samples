@@ -7,14 +7,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 declare var TextEncoder: any;
-
-// const mjAPI = require('mathjax-node');
-// mjAPI.config({
-// 	MathJax: {
-// 		// traditional MathJax configuration
-// 	}
-// });
-// mjAPI.start();
+declare var TextDecoder: any;
 
 interface CellStreamOutput {
 	output_type: 'stream';
@@ -64,7 +57,7 @@ export class Cell {
 	}
 
 	containHTML() {
-		return this._outputs && this._outputs.find(op => op.outputs.find(opi => opi.mime === 'text/html'));
+		return this._outputs && this._outputs.find(op => op.items.find(opi => opi.mime === 'text/html'));
 	}
 
 	insertDependencies(dependency: vscode.NotebookCellOutput) {
@@ -90,28 +83,28 @@ function transformOutputToCore(rawOutput: RawCellOutput): vscode.NotebookCellOut
 	if (rawOutput.output_type === 'execute_result' || rawOutput.output_type === 'display_data') {
 		const items: vscode.NotebookCellOutputItem[] = [];
 		for (const key in rawOutput.data) {
-			items.push(new vscode.NotebookCellOutputItem(key, rawOutput.data[key], undefined));
+			items.push(new vscode.NotebookCellOutputItem(rawOutput.data[key], key));
 		}
 		return new vscode.NotebookCellOutput(items)
 	} else if (rawOutput.output_type === 'stream') {
-		return new vscode.NotebookCellOutput([new vscode.NotebookCellOutputItem('application/x.notebook.stream', Array.isArray(rawOutput.text) ? rawOutput.text.join('') : rawOutput.text)])
+		return new vscode.NotebookCellOutput([vscode.NotebookCellOutputItem.stdout(Array.isArray(rawOutput.text) ? rawOutput.text.join('') : rawOutput.text)]);
 	} else {
-		return new vscode.NotebookCellOutput([new vscode.NotebookCellOutputItem('application/x.notebook.error-traceback', {
-			ename: (<CellErrorOutput>rawOutput).ename,
-			evalue: (<CellErrorOutput>rawOutput).evalue,
-			traceback: (<CellErrorOutput>rawOutput).traceback
+		return new vscode.NotebookCellOutput([vscode.NotebookCellOutputItem.error({
+			name: (<CellErrorOutput>rawOutput).ename,
+			message: (<CellErrorOutput>rawOutput).evalue,
+			stack: (<CellErrorOutput>rawOutput).traceback.join('\n')
 		})]);
 	}
 }
 
 function transformOutputFromCore(output: vscode.NotebookCellOutput): RawCellOutput {
-	if (output.outputs.find(op => op.mime === 'application/x.notebook.stream')) {
+	if (output.items.find(op => op.mime === 'application/x.notebook.stream')) {
 		return {
 			output_type: 'stream',
-			text: output.outputs.find(op => op.mime === 'application/x.notebook.stream')?.value as string || ''
+			text: new TextDecoder().decode(output.items.find(op => op.mime === 'application/x.notebook.stream')?.data)
 		}
-	} else 	if (output.outputs.find(op => op.mime === 'application/x.notebook.error-traceback')) {
-		const item = output.outputs.find(op => op.mime === 'application/x.notebook.error-traceback');
+	} else 	if (output.items.find(op => op.mime === 'application/x.notebook.error-traceback')) {
+		const item = output.items.find(op => op.mime === 'application/x.notebook.error-traceback');
 		return {
 			output_type: 'error',
 			ename: (item as any).ename,
@@ -121,7 +114,7 @@ function transformOutputFromCore(output: vscode.NotebookCellOutput): RawCellOutp
 	} else {
 		let data: { [key: string]: unknown } = {};
 
-		output.outputs.forEach(op => {
+		output.items.forEach(op => {
 			data[op.mime] = data.value
 		})
 		return {
@@ -152,16 +145,10 @@ export class JupyterNotebook {
 		private _extensionPath: string,
 		public notebookJSON: any,
 		private fillOutputs: boolean
-	) {
-		// editor.document.languages = ['python'];
-		// editor.document.displayOrder = this.displayOrders;
-		// editor.document.metadata = {
-		// };
-	}
+	) {}
 
 	resolve(): vscode.NotebookData {
 		return {
-			languages: ['python'],
 			metadata: {
 				editable: this.notebookJSON?.metadata?.editable === undefined ? true : this.notebookJSON?.metadata?.editable,
 				runnable: this.notebookJSON?.metadata?.runnable === undefined ? true : this.notebookJSON?.metadata?.runnable,
@@ -173,30 +160,6 @@ export class JupyterNotebook {
 				let outputs: vscode.NotebookCellOutput[] = [];
 				if (this.fillOutputs) {
 					outputs = raw_cell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || [];
-
-					// if (!this.preloadScript) {
-					// 	let containHTML = this.containHTML(raw_cell);
-
-					// 	if (containHTML) {
-					// 		this.preloadScript = true;
-					// 		const scriptPathOnDisk = vscode.Uri.file(
-					// 			path.join(this._extensionPath, 'dist', 'ipywidgets.js')
-					// 		);
-
-					// 		let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-webview-resource' });
-
-					// 		outputs.unshift(
-					// 			{
-					// 				outputKind: vscode.CellOutputKind.Rich,
-					// 				'data': {
-					// 					'text/html': [
-					// 						`<script src="${scriptUri}"></script>\n`,
-					// 					]
-					// 				}
-					// 			}
-					// 		);
-					// 	}
-					// }
 				}
 
 				const executionOrder = typeof raw_cell.execution_count === 'number' ? raw_cell.execution_count : undefined;
@@ -213,7 +176,7 @@ export class JupyterNotebook {
 				return {
 					source: raw_cell.source ? (Array.isArray(raw_cell.source) ? raw_cell.source.join('') : raw_cell.source) : '',
 					language: this.notebookJSON?.metadata?.language_info?.name || 'python',
-					cellKind: raw_cell.cell_type === 'code' ? vscode.CellKind.Code : vscode.CellKind.Markdown,
+					cellKind: raw_cell.cell_type === 'code' ? vscode.NotebookCellKind.Code : vscode.NotebookCellKind.Markup,
 					outputs: outputs,
 					metadata
 				};
@@ -225,75 +188,44 @@ export class JupyterNotebook {
 		return this.nextExecutionOrder++;
 	}
 
-	async execute(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined) {
-		if (cell) {
-			const index = document.cells.indexOf(cell);
-			let rawCell: RawCell = this.notebookJSON.cells[index];
+	async execute(document: vscode.NotebookDocument, controller: vscode.NotebookController) {
 
-			if (!this.preloadScript) {
-				let containHTML = this.containHTML(rawCell);
-				if (containHTML) {
-					this.preloadScript = true;
-					const scriptPathOnDisk = vscode.Uri.file(
-						path.join(this._extensionPath, 'dist', 'ipywidgets.js')
-					);
+		if (!this.fillOutputs) {
+			document.getCells().forEach(async (cell, i) => {
+				const execution = controller.createNotebookCellExecution(cell);
+				execution.executionOrder = this.getNextExecutionOrder();
+				execution.start(Date.now())
 
-					let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-webview-resource' });
+				let rawCell: RawCell = this.notebookJSON.cells[i];
 
-					rawCell.outputs?.unshift(
-						{
-							'output_type': 'display_data',
-							'data': {
-								'text/html': [
-									`<script src="${scriptUri}"></script>\n`,
-								]
-							}
-						}
-					);
-				}
-			}
-			const edit = new vscode.WorkspaceEdit();
-			edit.replaceNotebookCellOutput(document.uri, cell.index, rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || []);
-			edit.replaceNotebookCellMetadata(document.uri, cell.index, { ...cell.metadata, executionOrder: this.getNextExecutionOrder() });
-			await vscode.workspace.applyEdit(edit);
-		} else {
-			if (!this.fillOutputs) {
-				for (let i = 0; i < document.cells.length; i++) {
-					let cell = document.cells[i];
+				if (!this.preloadScript) {
+					let containHTML = this.containHTML(rawCell);
+					if (containHTML) {
+						this.preloadScript = true;
+						const scriptPathOnDisk = vscode.Uri.file(
+							path.join(this._extensionPath, 'dist', 'ipywidgets.js')
+						);
 
-					let rawCell: RawCell = this.notebookJSON.cells[i];
+						let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-webview-resource' });
 
-					if (!this.preloadScript) {
-						let containHTML = this.containHTML(rawCell);
-						if (containHTML) {
-							this.preloadScript = true;
-							const scriptPathOnDisk = vscode.Uri.file(
-								path.join(this._extensionPath, 'dist', 'ipywidgets.js')
-							);
-
-							let scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-webview-resource' });
-
-							rawCell.outputs?.unshift(
-								{
-									'output_type': 'display_data',
-									'data': {
-										'text/html': [
-											`<script src="${scriptUri}"></script>\n`,
-										]
-									}
+						rawCell.outputs?.unshift(
+							{
+								'output_type': 'display_data',
+								'data': {
+									'text/html': [
+										`<script src="${scriptUri}"></script>\n`,
+									]
 								}
-							);
-						}
+							}
+						);
 					}
-
-					const edit = new vscode.WorkspaceEdit();
-					edit.replaceNotebookCellOutput(document.uri, cell.index, rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || []);
-					edit.replaceNotebookCellMetadata(document.uri, cell.index, { ...cell.metadata, executionOrder: this.getNextExecutionOrder() });
-					await vscode.workspace.applyEdit(edit);
 				}
 
-				this.fillOutputs = true;
-			}
+				execution.replaceOutput(rawCell.outputs?.map(rawOutput => transformOutputToCore(rawOutput)) || []);
+				execution.end(true, Date.now());
+			})
+
+			this.fillOutputs = true;
 		}
 	}
 
@@ -308,35 +240,26 @@ export class JupyterNotebook {
 	}
 }
 
-async function timeFn(fn: () => Promise<void>): Promise<number> {
-	const startTime = Date.now();
-	await fn();
-	return Date.now() - startTime;
-}
-
 // For test
 const DELAY_EXECUTION = true;
 
-export class NotebookProvider implements vscode.NotebookContentProvider, vscode.NotebookKernel {
+export class NotebookProvider implements vscode.NotebookContentProvider {
 	private _notebooks: Map<string, JupyterNotebook> = new Map();
 	onDidChange: vscode.Event<void> = new vscode.EventEmitter<void>().event;
 	label: string = 'Jupyter';
 	isPreferred: boolean = true;
 
-	constructor(viewType: string, private _extensionPath: string, private fillOutputs: boolean) {
+	private readonly _controller: vscode.NotebookController;
 
+	constructor(viewType: string, private _extensionPath: string, private fillOutputs: boolean) {
 		const emitter = new vscode.EventEmitter<vscode.NotebookDocument | undefined>();
-		vscode.notebook.registerNotebookKernelProvider({ viewType: viewType }, {
-			onDidChangeKernels: emitter.event,
-			provideKernels: () => {
-				return [this];
-			}
-		});
+
+		this._controller = vscode.notebooks.createNotebookController(viewType,viewType, "Jupyter")
+		this._controller.executeHandler = this._executeAll.bind(this);
 
 		setTimeout(() => {
 			emitter.fire(undefined);
 		}, 5000);
-
 	}
 
 	async openNotebook(uri: vscode.Uri, context: vscode.NotebookDocumentOpenContext): Promise<vscode.NotebookData> {
@@ -365,10 +288,6 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 		}
 	}
 
-	async resolveNotebook(_document: vscode.NotebookDocument, _webview: vscode.NotebookCommunication): Promise<void> {
-		return;
-	}
-
 	async saveNotebook(_document: vscode.NotebookDocument, _token: vscode.CancellationToken): Promise<void> {
 		return this._save(_document, _document.uri, _token);
 	}
@@ -380,8 +299,8 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 	async _save(document: vscode.NotebookDocument, targetResource: vscode.Uri, _token: vscode.CancellationToken): Promise<void> {
 		let cells: RawCell[] = [];
 
-		for (let i = 0; i < document.cells.length; i++) {
-			let lines = document.cells[i].document.getText().split(/\r|\n|\r\n/g);
+		document.getCells().forEach(cell => {
+			let lines = cell.document.getText().split(/\r|\n|\r\n/g);
 			let source = lines.map((value, index) => {
 				if (index !== lines.length - 1) {
 					return value + '\n';
@@ -390,30 +309,30 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 				}
 			});
 
-			if (document.cells[i].cellKind === vscode.CellKind.Markdown) {
+			if(cell.kind === vscode.NotebookCellKind.Markup) {
 				cells.push({
 					source: source,
 					metadata: {
 						language_info: {
-							name: document.cells[i].language || 'markdown'
+							name: cell.document.languageId || 'markdown'
 						}
 					},
-					cell_type: document.cells[i].cellKind === vscode.CellKind.Markdown ? 'markdown' : 'code'
+					cell_type: 'markdown'
 				});
 			} else {
 				cells.push({
 					source: source,
 					metadata: {
 						language_info: {
-							name: document.cells[i].language || 'markdown'
+							name: cell.document.languageId || 'markdown'
 						}
 					},
-					cell_type: document.cells[i].cellKind === vscode.CellKind.Markdown ? 'markdown' : 'code',
-					outputs: document.cells[i].outputs.map(output => transformOutputFromCore(output)),
-					execution_count: document.cells[i].metadata?.executionOrder
+					cell_type: 'code',
+					outputs: cell.outputs.map(output => transformOutputFromCore(output)),
+					execution_count: cell.metadata?.executionOrder
 				});
 			}
-		}
+		})
 
 		let raw = this._notebooks.get(document.uri.toString());
 
@@ -429,55 +348,29 @@ export class NotebookProvider implements vscode.NotebookContentProvider, vscode.
 		return;
 	}
 
-	async executeAllCells(document: vscode.NotebookDocument): Promise<void> {
-		await this.executeCell(document, undefined);
+	private _executeAll(_cells: vscode.NotebookCell[], notebook: vscode.NotebookDocument, controller: vscode.NotebookController): void {
+		this._doExecution(notebook, controller)
 	}
 
-	async cancelAllCellsExecution(_document: vscode.NotebookDocument) {
-
-	}
-
-
-	async executeCell(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined): Promise<void> {
-		if (cell) {
-			cell.metadata.statusMessage = 'Running';
-			cell.metadata.runStartTime = Date.now();
-			cell.metadata.runState = vscode.NotebookCellRunState.Running;
+	private async _doExecution(document: vscode.NotebookDocument, controller: vscode.NotebookController): Promise<void> {
+		if (DELAY_EXECUTION) {
+			return this._executeCellDelayed(document, controller);
 		}
 
-		const duration = await timeFn(async () => {
-			if (DELAY_EXECUTION) {
-				return this._executeCellDelayed(document, cell);
-			}
-
-			const jupyterNotebook = this._notebooks.get(document.uri.toString());
-			if (jupyterNotebook) {
-				return jupyterNotebook.execute(document, cell);
-			}
-		});
-
-		if (cell) {
-			cell.metadata.lastRunDuration = duration;
-			cell.metadata.statusMessage = 'Success'
-			cell.metadata.runState = vscode.NotebookCellRunState.Success;
+		const jupyterNotebook = this._notebooks.get(document.uri.toString());
+		if (jupyterNotebook) {
+			return jupyterNotebook.execute(document, controller);
 		}
 	}
-	
-	async cancelCellExecution(_document: vscode.NotebookDocument, _cell: vscode.NotebookCell) {
-	}
 
-	private async _executeCellDelayed(document: vscode.NotebookDocument, cell: vscode.NotebookCell | undefined): Promise<void> {
+	private async _executeCellDelayed(document: vscode.NotebookDocument, controller: vscode.NotebookController): Promise<void> {
 		let jupyterNotebook = this._notebooks.get(document.uri.toString());
 		return new Promise<void>(async resolve => {
 			await new Promise(resolve => setTimeout(resolve, Math.random() * 2500));
 			if (jupyterNotebook) {
-				return jupyterNotebook.execute(document, cell).then(resolve);
+				return jupyterNotebook.execute(document, controller).then(resolve);
 			}
 		});
-	}
-
-	async revertNotebook(_document: vscode.NotebookDocument, _cancellation: vscode.CancellationToken): Promise<void> {
-		return;
 	}
 
 	async backupNotebook(document: vscode.NotebookDocument, context: vscode.NotebookDocumentBackupContext, cancellation: vscode.CancellationToken): Promise<vscode.NotebookDocumentBackup> {

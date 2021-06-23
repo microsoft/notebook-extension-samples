@@ -12,7 +12,7 @@
   "enableProposedApi": true,
   "license": "MIT",
   "engines": {
-    "vscode": "^1.40.0"
+    "vscode": "^1.57.0"
   },
   "main": "./dist/extension",
   "categories": [
@@ -132,9 +132,11 @@
     "vscode-nls": "^4.0.0"
   },
   "devDependencies": {
-    "webpack-cli": "^3.3.10",
+    "@types/node": "^6.0.40",
     "css-loader": "^3.4.1",
     "style-loader": "^1.1.2",
-    "@types/node": "^6.0.40"
+    "util": "^0.12.4",
+    "webpack": "^5.40.0",
+    "webpack-cli": "^3.3.10"
   }
 }
