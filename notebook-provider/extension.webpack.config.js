@@ -17,9 +17,6 @@ module.exports = [
 		},
 		entry: {
 			extension: './src/extension.ts',
-		},
-		externals: {
-			"mathjax-node": "mathjax-node"
 		}
 	}),
 	{

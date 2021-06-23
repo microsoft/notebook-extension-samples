@@ -12,7 +12,7 @@
   "enableProposedApi": true,
   "license": "MIT",
   "engines": {
-    "vscode": "^1.40.0"
+    "vscode": "^1.57.0"
   },
   "main": "./dist/extension",
   "categories": [
@@ -49,9 +49,10 @@
         "icon": "$(markdown)"
       }
     ],
-    "notebookProvider": [
+    "notebooks": [
       {
-        "viewType": "jupyter",
+        "id": "jupyter",
+        "type": "jupyter",
         "displayName": "Jupyter",
         "selector": [
           {
@@ -61,7 +62,8 @@
         ]
       },
       {
-        "viewType": "jupytertest",
+        "id": "jupytertest",
+        "type": "jupytertest",
         "displayName": "Jupyter Test",
         "selector": [
           {
@@ -126,15 +128,16 @@
     "@jupyter-widgets/controls": "^1.5.3",
     "@lumino/widgets": "^1.3.0",
     "fast-json-parse": "^1.0.3",
-    "mathjax-node": "^2.1.1",
     "typescript": "^3.8.2",
     "vscode-extension-telemetry": "0.1.1",
     "vscode-nls": "^4.0.0"
   },
   "devDependencies": {
-    "webpack-cli": "^3.3.10",
+    "@types/node": "^6.0.40",
     "css-loader": "^3.4.1",
     "style-loader": "^1.1.2",
-    "@types/node": "^6.0.40"
+    "util": "^0.12.4",
+    "webpack": "^5.40.0",
+    "webpack-cli": "^3.3.10"
   }
 }

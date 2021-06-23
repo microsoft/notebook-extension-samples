@@ -13,26 +13,8 @@ export function activate(context: vscode.ExtensionContext) {
 	console.log(context.extensionPath);
 	console.log(context.globalStorageUri.fsPath);
 
-	context.subscriptions.push(vscode.notebook.registerNotebookContentProvider('jupyter', new NotebookProvider('jupyter', context.extensionPath, true)));
-	context.subscriptions.push(vscode.notebook.registerNotebookContentProvider('jupytertest', new NotebookProvider('jupytertest', context.extensionPath, false)));
-	// context.subscriptions.push(vscode.window.registerNotebookOutputRenderer(
-	// 	'kerneltest',
-	// 	{
-	// 		type: 'display_data',
-	// 		subTypes: [
-	// 			'text/latex',
-	// 			'text/markdown',
-	// 			'application/json',
-	// 			'application/vnd.plotly.v1+json',
-	// 			'application/vnd.vega.v5+json'
-	// 		]
-	// 	},
-	// 	{
-	// 		render: () => {
-	// 			return '<h1>kernel test renderer</h1>';
-	// 		}
-	// 	}
-	// ));
+	context.subscriptions.push(vscode.workspace.registerNotebookContentProvider('jupyter', new NotebookProvider('jupyter', context.extensionPath, true)));
+	context.subscriptions.push(vscode.workspace.registerNotebookContentProvider('jupytertest', new NotebookProvider('jupytertest', context.extensionPath, false)));
 
 	vscode.commands.registerCommand('notebook.saveToMarkdown', () => {
 		if (vscode.window.activeNotebookEditor) {
@@ -44,15 +26,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 			let content = '';
 
-			for (let i = 0; i < document.cells.length; i++) {
-				let cell = document.cells[i];
-				let language = cell.language || '';
-				if (cell.cellKind === vscode.CellKind.Markdown) {
+			document.getCells().forEach(cell => {
+				let language = cell.document.languageId || '';
+				if(cell.kind == vscode.NotebookCellKind.Markup) {
 					content += cell.document.getText() + '\n';
 				} else {
 					content += '```' + language + '\n' + cell.document.getText() + '```\n\n';
 				}
-			}
+			})
 
 			fs.writeFileSync(newFSPath, content);
 		}
