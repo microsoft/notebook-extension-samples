@@ -49,9 +49,10 @@
         "icon": "$(markdown)"
       }
     ],
-    "notebookProvider": [
+    "notebooks": [
       {
-        "viewType": "jupyter",
+        "id": "jupyter",
+        "type": "jupyter",
         "displayName": "Jupyter",
         "selector": [
           {
@@ -61,7 +62,8 @@
         ]
       },
       {
-        "viewType": "jupytertest",
+        "id": "jupytertest",
+        "type": "jupytertest",
         "displayName": "Jupyter Test",
         "selector": [
           {
