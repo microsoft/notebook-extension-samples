@@ -11,14 +11,6 @@ const samples = [
     {
         description: 'Notebook Document Provider',
         path: 'notebook-provider'
-    },
-    {
-        description: 'Notebook Renderers',
-        path: 'notebook-renderer'
-    },
-    {
-        description: 'Notebook Regexper',
-        path: 'notebook-regexper'
     }
 ]
 
